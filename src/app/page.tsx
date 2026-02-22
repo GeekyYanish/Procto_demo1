@@ -83,7 +83,7 @@ export default function HomePage() {
                             {/* CTAs */}
                             <div className="mt-6 flex flex-wrap items-center gap-3">
                                 <Link
-                                    href="/login"
+                                    href="/login?role=faculty"
                                     className="group inline-flex items-center justify-center rounded-full bg-cyan-500 px-6 py-2.5 text-sm font-medium text-slate-950 shadow-lg shadow-cyan-500/40 transition hover:bg-cyan-400"
                                 >
                                     Faculty login
@@ -93,7 +93,7 @@ export default function HomePage() {
                                 </Link>
 
                                 <Link
-                                    href="/login"
+                                    href="/login?role=student"
                                     className="inline-flex items-center justify-center rounded-full border border-slate-700 bg-slate-900/70 px-5 py-2.5 text-sm font-medium text-slate-200 backdrop-blur hover:border-cyan-400/70 hover:text-cyan-200"
                                 >
                                     Student login

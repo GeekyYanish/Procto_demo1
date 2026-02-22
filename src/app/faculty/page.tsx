@@ -1,7 +1,49 @@
 // app/faculty/page.tsx
+'use client';
+
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import type { User } from '@supabase/supabase-js';
 
 export default function FacultyPage() {
+    const [user, setUser] = useState<User | null>(null);
+    const router = useRouter();
+
+    useEffect(() => {
+        const supabase = createClient();
+        const getUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            setUser(user);
+        };
+        getUser();
+    }, []);
+
+    const handleLogout = async () => {
+        const supabase = createClient();
+        await supabase.auth.signOut();
+        router.push('/');
+        router.refresh();
+    };
+
+    // Get user initials for avatar
+    const getInitials = () => {
+        if (!user?.email) return 'FC';
+        const parts = user.email.split('@')[0].split('.');
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[1][0]).toUpperCase();
+        }
+        return user.email.substring(0, 2).toUpperCase();
+    };
+
+    // Get display name
+    const getDisplayName = () => {
+        if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
+        if (!user?.email) return 'Faculty';
+        return user.email.split('@')[0].replace('.', ' ').replace(/\b\w/g, c => c.toUpperCase());
+    };
+
     return (
         <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
             {/* Glow background */}
@@ -44,7 +86,7 @@ export default function FacultyPage() {
                             For Faculty
                         </Link>
                         <Link
-                            href="/students"
+                            href="/student"
                             className="transition-colors hover:text-cyan-300"
                         >
                             For Student
@@ -56,11 +98,11 @@ export default function FacultyPage() {
                         <button className="flex items-center gap-3 rounded-full border border-slate-700/60 bg-slate-900/70 px-3 py-1.5 hover:border-cyan-400/40 transition-all duration-300">
                             {/* Avatar */}
                             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white font-semibold text-sm">
-                                JD
+                                {getInitials()}
                             </div>
                             <div className="hidden sm:flex flex-col items-start leading-tight">
                                 <span className="text-sm font-medium text-slate-200">
-                                    Dr. John Doe
+                                    {getDisplayName()}
                                 </span>
                                 <span className="text-[0.65rem] text-slate-500">
                                     Faculty
@@ -128,10 +170,14 @@ export default function FacultyPage() {
                                     </svg>
                                     Settings
                                 </a>
-                                <div className="border-t border-slate-700/60 my-1"></div>
-                                <a
-                                    href="/"
-                                    className="flex items-center gap-2 px-3 py-2 text-sm text-red-400 rounded-lg hover:bg-red-500/10 transition-colors"
+                                {user?.email && (
+                                    <div className="px-3 py-2 text-xs text-slate-500 truncate border-t border-slate-700/60 mt-1 pt-2">
+                                        {user.email}
+                                    </div>
+                                )}
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 rounded-lg hover:bg-red-500/10 transition-colors"
                                 >
                                     <svg
                                         className="w-4 h-4"
@@ -147,7 +193,7 @@ export default function FacultyPage() {
                                         />
                                     </svg>
                                     Logout
-                                </a>
+                                </button>
                             </div>
                         </div>
                     </div>

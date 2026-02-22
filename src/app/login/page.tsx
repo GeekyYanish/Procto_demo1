@@ -1,22 +1,115 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
-    const [isStudent, setIsStudent] = useState(true);
+    return (
+        <Suspense fallback={
+            <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+                <div className="animate-spin h-8 w-8 border-2 border-emerald-400 border-t-transparent rounded-full" />
+            </main>
+        }>
+            <LoginContent />
+        </Suspense>
+    );
+}
+
+function LoginContent() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // Read role from query params to pre-select the toggle
+    const roleParam = searchParams.get('role');
+    const [isStudent, setIsStudent] = useState(roleParam !== 'faculty');
+    const [isSignUp, setIsSignUp] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const router = useRouter();
+    const [error, setError] = useState('');
+    const [message, setMessage] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    // Show error if redirected from OAuth failure
+    const authError = searchParams.get('error');
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Navigate to appropriate dashboard after login
-        if (isStudent) {
-            router.push('/student');
+        setError('');
+        setMessage('');
+        setLoading(true);
+
+        const supabase = createClient();
+
+        if (isSignUp) {
+            // Sign Up
+            const { error: signUpError } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        role: isStudent ? 'student' : 'faculty',
+                    },
+                },
+            });
+
+            if (signUpError) {
+                setError(signUpError.message);
+                setLoading(false);
+                return;
+            }
+
+            setMessage('Check your email for a confirmation link!');
+            setLoading(false);
         } else {
-            router.push('/faculty');
+            // Sign In
+            const { error: signInError } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+
+            if (signInError) {
+                setError(signInError.message);
+                setLoading(false);
+                return;
+            }
+
+            // Navigate to appropriate dashboard after login
+            if (isStudent) {
+                router.push('/student');
+            } else {
+                router.push('/faculty');
+            }
+            router.refresh();
+        }
+    };
+
+    const handleGoogleLogin = async () => {
+        const supabase = createClient();
+        const { error: oauthError } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: `${window.location.origin}/auth/callback?next=${isStudent ? '/student' : '/faculty'}`,
+            },
+        });
+
+        if (oauthError) {
+            setError(oauthError.message);
+        }
+    };
+
+    const handleGitHubLogin = async () => {
+        const supabase = createClient();
+        const { error: oauthError } = await supabase.auth.signInWithOAuth({
+            provider: 'github',
+            options: {
+                redirectTo: `${window.location.origin}/auth/callback?next=${isStudent ? '/student' : '/faculty'}`,
+            },
+        });
+
+        if (oauthError) {
+            setError(oauthError.message);
         }
     };
 
@@ -53,8 +146,8 @@ export default function LoginPage() {
                         Welcome to Procto
                     </h1>
                     <p className="mt-2 text-sm text-slate-400">
-                        Sign in to access your{' '}
-                        {isStudent ? 'exam session' : 'dashboard'}
+                        {isSignUp ? 'Create your account' : 'Sign in to access your'}{' '}
+                        {!isSignUp && (isStudent ? 'exam session' : 'dashboard')}
                     </p>
                 </div>
 
@@ -89,6 +182,18 @@ export default function LoginPage() {
                                 </button>
                             </div>
                         </div>
+
+                        {/* Error/Success Messages */}
+                        {(error || authError) && (
+                            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                                {error || 'Authentication failed. Please try again.'}
+                            </div>
+                        )}
+                        {message && (
+                            <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">
+                                {message}
+                            </div>
+                        )}
 
                         {/* Login Form */}
                         <form onSubmit={handleSubmit} className="space-y-5">
@@ -135,36 +240,52 @@ export default function LoginPage() {
                                     placeholder="••••••••"
                                     className={`w-full rounded-xl border bg-slate-950/60 px-4 py-3 text-slate-100 placeholder-slate-500 outline-none transition-all duration-300 ${isStudent ? 'border-slate-700/60 focus:border-emerald-500/60 focus:ring-2 focus:ring-emerald-500/20' : 'border-slate-700/60 focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20'}`}
                                     required
+                                    minLength={6}
                                 />
                             </div>
 
-                            {/* Remember Me & Forgot Password */}
-                            <div className="flex items-center justify-between text-sm">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        className={`w-4 h-4 rounded border-slate-600 bg-slate-900 transition-colors ${isStudent ? 'text-emerald-500 focus:ring-emerald-500/30' : 'text-violet-500 focus:ring-violet-500/30'}`}
-                                    />
-                                    <span className="text-slate-400">
-                                        Remember me
-                                    </span>
-                                </label>
-                                <a
-                                    href="#"
-                                    className={`transition-colors ${isStudent ? 'text-emerald-400 hover:text-emerald-300' : 'text-violet-400 hover:text-violet-300'}`}
-                                >
-                                    Forgot password?
-                                </a>
-                            </div>
+                            {/* Remember Me & Forgot Password (only for sign in) */}
+                            {!isSignUp && (
+                                <div className="flex items-center justify-between text-sm">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className={`w-4 h-4 rounded border-slate-600 bg-slate-900 transition-colors ${isStudent ? 'text-emerald-500 focus:ring-emerald-500/30' : 'text-violet-500 focus:ring-violet-500/30'}`}
+                                        />
+                                        <span className="text-slate-400">
+                                            Remember me
+                                        </span>
+                                    </label>
+                                    <a
+                                        href="#"
+                                        className={`transition-colors ${isStudent ? 'text-emerald-400 hover:text-emerald-300' : 'text-violet-400 hover:text-violet-300'}`}
+                                    >
+                                        Forgot password?
+                                    </a>
+                                </div>
+                            )}
 
                             {/* Submit Button */}
                             <button
                                 type="submit"
-                                className={`w-full rounded-xl py-3.5 text-sm font-semibold shadow-lg transition-all duration-300 hover:scale-[1.02] ${isStudent ? 'bg-emerald-500 text-black shadow-emerald-500/30 hover:bg-emerald-400' : 'bg-violet-500 text-white shadow-violet-500/30 hover:bg-violet-400'}`}
+                                disabled={loading}
+                                className={`w-full rounded-xl py-3.5 text-sm font-semibold shadow-lg transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${isStudent ? 'bg-emerald-500 text-black shadow-emerald-500/30 hover:bg-emerald-400' : 'bg-violet-500 text-white shadow-violet-500/30 hover:bg-violet-400'}`}
                             >
-                                {isStudent
-                                    ? 'Enter Exam Lobby'
-                                    : 'Access Dashboard'}
+                                {loading ? (
+                                    <span className="inline-flex items-center gap-2">
+                                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        {isSignUp ? 'Creating Account...' : 'Signing In...'}
+                                    </span>
+                                ) : isSignUp ? (
+                                    'Create Account'
+                                ) : isStudent ? (
+                                    'Enter Exam Lobby'
+                                ) : (
+                                    'Access Dashboard'
+                                )}
                             </button>
                         </form>
 
@@ -182,7 +303,11 @@ export default function LoginPage() {
 
                         {/* Social Login */}
                         <div className="grid grid-cols-2 gap-3">
-                            <button className="flex items-center justify-center gap-2 rounded-xl border border-slate-700/60 bg-slate-900/60 px-4 py-3 text-sm text-slate-300 transition-all hover:border-slate-600 hover:bg-slate-800/60">
+                            <button
+                                onClick={handleGoogleLogin}
+                                disabled={loading}
+                                className="flex items-center justify-center gap-2 rounded-xl border border-slate-700/60 bg-slate-900/60 px-4 py-3 text-sm text-slate-300 transition-all hover:border-slate-600 hover:bg-slate-800/60 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
                                 <svg
                                     className="w-5 h-5"
                                     viewBox="0 0 24 24"
@@ -207,7 +332,11 @@ export default function LoginPage() {
                                 </svg>
                                 Google
                             </button>
-                            <button className="flex items-center justify-center gap-2 rounded-xl border border-slate-700/60 bg-slate-900/60 px-4 py-3 text-sm text-slate-300 transition-all hover:border-slate-600 hover:bg-slate-800/60">
+                            <button
+                                onClick={handleGitHubLogin}
+                                disabled={loading}
+                                className="flex items-center justify-center gap-2 rounded-xl border border-slate-700/60 bg-slate-900/60 px-4 py-3 text-sm text-slate-300 transition-all hover:border-slate-600 hover:bg-slate-800/60 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
                                 <svg
                                     className="w-5 h-5"
                                     fill="currentColor"
@@ -219,15 +348,19 @@ export default function LoginPage() {
                             </button>
                         </div>
 
-                        {/* Sign Up Link */}
+                        {/* Sign Up / Sign In Toggle */}
                         <p className="mt-6 text-center text-sm text-slate-400">
-                            Don&apos;t have an account?{' '}
-                            <a
-                                href="#"
+                            {isSignUp ? 'Already have an account?' : "Don\u0027t have an account?"}{' '}
+                            <button
+                                onClick={() => {
+                                    setIsSignUp(!isSignUp);
+                                    setError('');
+                                    setMessage('');
+                                }}
                                 className={`font-medium transition-colors ${isStudent ? 'text-emerald-400 hover:text-emerald-300' : 'text-violet-400 hover:text-violet-300'}`}
                             >
-                                Sign up
-                            </a>
+                                {isSignUp ? 'Sign in' : 'Sign up'}
+                            </button>
                         </p>
                     </div>
                 </div>
