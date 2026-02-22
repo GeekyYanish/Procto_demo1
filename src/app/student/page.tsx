@@ -87,26 +87,6 @@ export default function StudentPage() {
                         </div>
                     </Link>
 
-                    <nav className="hidden items-center gap-6 text-sm text-neutral-400 sm:flex">
-                        <Link
-                            href="/#features"
-                            className="transition-colors hover:text-emerald-400"
-                        >
-                            Features
-                        </Link>
-                        <Link
-                            href="/faculty"
-                            className="transition-colors hover:text-emerald-400"
-                        >
-                            For Faculty
-                        </Link>
-                        <Link
-                            href="/student"
-                            className="text-emerald-400 border-b border-emerald-400/50"
-                        >
-                            For Student
-                        </Link>
-                    </nav>
 
                     {/* Profile Section */}
                     <div className="relative group">
@@ -245,10 +225,6 @@ export default function StudentPage() {
                                         →
                                     </span>
                                 </button>
-
-                                <button className="inline-flex items-center justify-center rounded-full border border-neutral-700 bg-neutral-900/70 px-6 py-3.5 text-base font-medium text-neutral-300 backdrop-blur hover:border-emerald-500/50 hover:text-emerald-400 transition-all">
-                                    View Demo
-                                </button>
                             </div>
 
                             {/* Mini Stats */}
@@ -367,7 +343,7 @@ export default function StudentPage() {
                                         </button>
 
                                         {/* Manage Classroom */}
-                                        <button className="w-full flex items-center gap-4 rounded-xl border border-neutral-800 bg-neutral-950/60 p-4 hover:border-emerald-500/50 hover:bg-neutral-900/80 transition-all group">
+                                        <Link href="/student/manage-classrooms" className="w-full flex items-center gap-4 rounded-xl border border-neutral-800 bg-neutral-950/60 p-4 hover:border-emerald-500/50 hover:bg-neutral-900/80 transition-all group">
                                             <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
                                                 <svg
                                                     className="w-5 h-5 text-emerald-400"
@@ -410,7 +386,7 @@ export default function StudentPage() {
                                                     d="M9 5l7 7-7 7"
                                                 />
                                             </svg>
-                                        </button>
+                                        </Link>
                                     </div>
                                 </div>
                             </div>
