@@ -72,27 +72,6 @@ export default function FacultyPage() {
                         </div>
                     </Link>
 
-                    <nav className="hidden items-center gap-6 text-sm text-slate-300 sm:flex">
-                        <Link
-                            href="/#features"
-                            className="transition-colors hover:text-cyan-300"
-                        >
-                            Features
-                        </Link>
-                        <Link
-                            href="/faculty"
-                            className="text-cyan-300 border-b border-cyan-300/50"
-                        >
-                            For Faculty
-                        </Link>
-                        <Link
-                            href="/student"
-                            className="transition-colors hover:text-cyan-300"
-                        >
-                            For Student
-                        </Link>
-                    </nav>
-
                     {/* Profile Section */}
                     <div className="relative group">
                         <button className="flex items-center gap-3 rounded-full border border-slate-700/60 bg-slate-900/70 px-3 py-1.5 hover:border-cyan-400/40 transition-all duration-300">
@@ -227,15 +206,9 @@ export default function FacultyPage() {
                             {/* CTAs */}
                             <div className="mt-6 flex flex-wrap items-center gap-3">
                                 <button className="group inline-flex items-center justify-center rounded-full bg-violet-500 px-6 py-2.5 text-sm font-medium text-white shadow-lg shadow-violet-500/40 transition hover:bg-violet-400">
-                                    Get Started Free
-                                    <span className="ml-2 text-lg leading-none transition-transform group-hover:translate-x-0.5">
-                                        →
-                                    </span>
+                                    Create Quiz
                                 </button>
 
-                                <button className="inline-flex items-center justify-center rounded-full border border-slate-700 bg-slate-900/70 px-5 py-2.5 text-sm font-medium text-slate-200 backdrop-blur hover:border-violet-400/70 hover:text-violet-200">
-                                    Watch Demo
-                                </button>
                             </div>
 
                             {/* Small feature list */}
@@ -272,6 +245,47 @@ export default function FacultyPage() {
 
                                     {/* Action Buttons */}
                                     <div className="flex flex-col gap-4">
+                                        {/* Create new Classroom Button */}
+                                        <Link href="/faculty/create-classroom" className="group relative w-full flex items-center gap-4 rounded-xl border border-slate-700/60 bg-slate-900/60 p-4 hover:border-cyan-400/50 hover:bg-slate-800/60 transition-all duration-300">
+                                            <div className="w-12 h-12 rounded-xl bg-cyan-500/20 flex items-center justify-center group-hover:bg-cyan-500/30 transition-colors">
+                                                <svg
+                                                    className="w-6 h-6 text-cyan-400"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                                                    />
+                                                </svg>
+                                            </div>
+                                            <div className="flex-1 text-left">
+                                                <h4 className="text-base font-semibold text-slate-100">
+                                                    Create Classroom
+                                                </h4>
+                                                <p className="text-xs text-slate-400">
+                                                    Set up a new classroom for
+                                                    your course
+                                                </p>
+                                            </div>
+                                            <svg
+                                                className="w-5 h-5 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M9 5l7 7-7 7"
+                                                />
+                                            </svg>
+                                        </Link>
+
                                         {/* Manage Classroom Button */}
                                         <button className="group relative w-full flex items-center gap-4 rounded-xl border border-slate-700/60 bg-slate-900/60 p-4 hover:border-violet-400/50 hover:bg-slate-800/60 transition-all duration-300">
                                             <div className="w-12 h-12 rounded-xl bg-violet-500/20 flex items-center justify-center group-hover:bg-violet-500/30 transition-colors">
@@ -313,46 +327,7 @@ export default function FacultyPage() {
                                             </svg>
                                         </button>
 
-                                        {/* Create new Classroom Button */}
-                                        <button className="group relative w-full flex items-center gap-4 rounded-xl border border-slate-700/60 bg-slate-900/60 p-4 hover:border-cyan-400/50 hover:bg-slate-800/60 transition-all duration-300">
-                                            <div className="w-12 h-12 rounded-xl bg-cyan-500/20 flex items-center justify-center group-hover:bg-cyan-500/30 transition-colors">
-                                                <svg
-                                                    className="w-6 h-6 text-cyan-400"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                                                    />
-                                                </svg>
-                                            </div>
-                                            <div className="flex-1 text-left">
-                                                <h4 className="text-base font-semibold text-slate-100">
-                                                    Create new Classroom
-                                                </h4>
-                                                <p className="text-xs text-slate-400">
-                                                    Set up a new classroom for
-                                                    your course
-                                                </p>
-                                            </div>
-                                            <svg
-                                                className="w-5 h-5 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M9 5l7 7-7 7"
-                                                />
-                                            </svg>
-                                        </button>
+
 
                                         {/* Reports Button */}
                                         <button className="group relative w-full flex items-center gap-4 rounded-xl border border-slate-700/60 bg-slate-900/60 p-4 hover:border-emerald-400/50 hover:bg-slate-800/60 transition-all duration-300">
