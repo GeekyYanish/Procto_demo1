@@ -75,6 +75,23 @@ export default function CreateClassroomPage() {
         await new Promise((resolve) => setTimeout(resolve, 800));
 
         const code = generateCode();
+
+        // Save to localStorage
+        const newClassroom = {
+            id: crypto.randomUUID(),
+            code,
+            name: classroomName.trim(),
+            courseCode: courseCode.trim(),
+            subject: subject.trim(),
+            section: section.trim() || undefined,
+            description: description.trim() || undefined,
+            createdAt: new Date().toISOString(),
+            students: 0,
+        };
+        const existing = JSON.parse(localStorage.getItem('procto_classrooms') || '[]');
+        existing.push(newClassroom);
+        localStorage.setItem('procto_classrooms', JSON.stringify(existing));
+
         setGeneratedCode(code);
         setSuccess(true);
         setLoading(false);
@@ -308,15 +325,15 @@ export default function CreateClassroomPage() {
 
                                         {/* Action buttons */}
                                         <div className="mt-8 flex flex-col sm:flex-row gap-3 w-full">
-                                            <button
-                                                type="button"
+                                            <Link
+                                                href="/faculty/manage-classrooms"
                                                 className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-cyan-500 py-3.5 text-base font-semibold text-white shadow-lg shadow-violet-500/30 transition-all duration-300 hover:shadow-violet-500/50 hover:scale-[1.02]"
                                             >
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                                 </svg>
                                                 Go to Manage Classroom
-                                            </button>
+                                            </Link>
                                             <button
                                                 type="button"
                                                 onClick={handleReset}
