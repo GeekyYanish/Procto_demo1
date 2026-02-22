@@ -219,12 +219,12 @@ export default function StudentPage() {
 
                             {/* CTA */}
                             <div className="mt-8 flex flex-wrap items-center gap-4">
-                                <button className="group inline-flex items-center justify-center rounded-full bg-emerald-500 px-8 py-3.5 text-base font-semibold text-black shadow-lg shadow-emerald-500/40 transition-all hover:bg-emerald-400 hover:shadow-emerald-500/60 hover:scale-105">
+                                <Link href="/student/enter-exam" className="group inline-flex items-center justify-center rounded-full bg-emerald-500 px-8 py-3.5 text-base font-semibold text-black shadow-lg shadow-emerald-500/40 transition-all hover:bg-emerald-400 hover:shadow-emerald-500/60 hover:scale-105">
                                     Enter Exam Lobby
                                     <span className="ml-2 text-lg leading-none transition-transform group-hover:translate-x-1">
                                         →
                                     </span>
-                                </button>
+                                </Link>
                             </div>
 
                             {/* Mini Stats */}
