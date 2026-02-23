@@ -303,7 +303,7 @@ export default function StudentPage() {
                                         </Link>
 
                                         {/* Join Quiz */}
-                                        <button className="w-full flex items-center gap-4 rounded-xl border border-neutral-800 bg-neutral-950/60 p-4 hover:border-emerald-500/50 hover:bg-neutral-900/80 transition-all group">
+                                        <Link href="/student/join-quiz" className="w-full flex items-center gap-4 rounded-xl border border-neutral-800 bg-neutral-950/60 p-4 hover:border-emerald-500/50 hover:bg-neutral-900/80 transition-all group">
                                             <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
                                                 <svg
                                                     className="w-5 h-5 text-emerald-400"
@@ -340,7 +340,7 @@ export default function StudentPage() {
                                                     d="M9 5l7 7-7 7"
                                                 />
                                             </svg>
-                                        </button>
+                                        </Link>
 
                                         {/* Manage Classroom */}
                                         <Link href="/student/manage-classrooms" className="w-full flex items-center gap-4 rounded-xl border border-neutral-800 bg-neutral-950/60 p-4 hover:border-emerald-500/50 hover:bg-neutral-900/80 transition-all group">
