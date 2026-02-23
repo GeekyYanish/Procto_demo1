@@ -275,15 +275,6 @@ export default function ManageClassroomsPage() {
                                 View and manage all your classrooms in one place.
                             </p>
                         </div>
-                        <Link
-                            href="/faculty/create-classroom"
-                            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/30 transition-all duration-300 hover:shadow-violet-500/50 hover:scale-[1.02] w-fit"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
-                            New Classroom
-                        </Link>
                     </div>
 
                     {/* Classroom Grid */}
