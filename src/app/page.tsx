@@ -124,11 +124,8 @@ export default function HomePage() {
 
                     {/* Desktop CTAs */}
                     <div className="hidden md:flex items-center gap-3">
-                        <Link href="/login?role=student" className="px-6 py-2.5 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors">
+                        <Link href="/login?role=student" className="shimmer-btn px-6 py-2.5 text-xs font-black uppercase tracking-widest bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-all shadow-xl rounded-xl">
                             Login
-                        </Link>
-                        <Link href="/login?role=faculty" className="shimmer-btn px-6 py-2.5 text-xs font-black uppercase tracking-widest bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-all shadow-xl rounded-xl">
-                            Faculty Portal
                         </Link>
                     </div>
 

@@ -5,6 +5,38 @@ import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
+// ── Username Registry Helpers (localStorage) ──────────────────────────────
+// Stores { username: email } mapping for uniqueness checks & login lookup
+const USER_REGISTRY_KEY = 'procto_user_registry';
+
+function getUserRegistry(): Record<string, string> {
+    if (typeof window === 'undefined') return {};
+    try {
+        const raw = localStorage.getItem(USER_REGISTRY_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch {
+        return {};
+    }
+}
+
+function isUsernameTaken(username: string): boolean {
+    const registry = getUserRegistry();
+    return Object.keys(registry).some(
+        (u) => u.toLowerCase() === username.toLowerCase()
+    );
+}
+
+function registerUsername(username: string, email: string): void {
+    const registry = getUserRegistry();
+    registry[username.toLowerCase()] = email.toLowerCase();
+    localStorage.setItem(USER_REGISTRY_KEY, JSON.stringify(registry));
+}
+
+function getEmailByUsername(username: string): string | null {
+    const registry = getUserRegistry();
+    return registry[username.toLowerCase()] ?? null;
+}
+
 export default function LoginPage() {
     return (
         <Suspense fallback={
@@ -25,14 +57,25 @@ function LoginContent() {
     const roleParam = searchParams.get('role');
     const [isStudent, setIsStudent] = useState(roleParam !== 'faculty');
     const [isSignUp, setIsSignUp] = useState(false);
-    const [email, setEmail] = useState('');
+
+    // Shared fields
+    const [emailOrUsername, setEmailOrUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
 
+    // Sign-up only fields
+    const [signUpEmail, setSignUpEmail] = useState('');
+    const [username, setUsername] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+
     // Show error if redirected from OAuth failure
     const authError = searchParams.get('error');
+
+    // Username validation: only letters, numbers, underscores, 3-20 chars
+    const isValidUsername = (u: string) => /^[a-zA-Z0-9_]{3,20}$/.test(u);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -43,13 +86,43 @@ function LoginContent() {
         const supabase = createClient();
 
         if (isSignUp) {
-            // Sign Up
+            // ── Sign Up ──────────────────────────────────────────────
+            // Validate username format
+            if (!isValidUsername(username)) {
+                setError('Username must be 3-20 characters and can only contain letters, numbers, and underscores.');
+                setLoading(false);
+                return;
+            }
+
+            // Check username uniqueness
+            if (isUsernameTaken(username)) {
+                setError('This username is already taken. Please choose a different one.');
+                setLoading(false);
+                return;
+            }
+
+            // Validate names
+            if (!firstName.trim()) {
+                setError('First name is required.');
+                setLoading(false);
+                return;
+            }
+            if (!lastName.trim()) {
+                setError('Last name is required.');
+                setLoading(false);
+                return;
+            }
+
             const { error: signUpError } = await supabase.auth.signUp({
-                email,
+                email: signUpEmail,
                 password,
                 options: {
                     data: {
                         role: isStudent ? 'student' : 'faculty',
+                        username: username.toLowerCase(),
+                        first_name: firstName.trim(),
+                        last_name: lastName.trim(),
+                        full_name: `${firstName.trim()} ${lastName.trim()}`,
                     },
                 },
             });
@@ -60,12 +133,29 @@ function LoginContent() {
                 return;
             }
 
-            setMessage('Check your email for a confirmation link!');
+            // Register username → email mapping
+            registerUsername(username, signUpEmail);
+
+            setMessage('Account created! Check your email for a confirmation link.');
             setLoading(false);
         } else {
-            // Sign In
+            // ── Sign In ──────────────────────────────────────────────
+            let loginEmail = emailOrUsername.trim();
+
+            // Determine if the input is an email or username
+            if (!loginEmail.includes('@')) {
+                // Treat as username → look up the email
+                const resolvedEmail = getEmailByUsername(loginEmail);
+                if (!resolvedEmail) {
+                    setError('No account found with that username.');
+                    setLoading(false);
+                    return;
+                }
+                loginEmail = resolvedEmail;
+            }
+
             const { error: signInError } = await supabase.auth.signInWithPassword({
-                email,
+                email: loginEmail,
                 password,
             });
 
@@ -112,6 +202,9 @@ function LoginContent() {
             setError(oauthError.message);
         }
     };
+
+    // Common input class builder
+    const inputClass = `w-full rounded-xl border bg-slate-950/60 px-4 py-3 text-slate-100 placeholder-slate-500 outline-none transition-all duration-300 ${isStudent ? 'border-slate-700/60 focus:border-emerald-500/60 focus:ring-2 focus:ring-emerald-500/20' : 'border-slate-700/60 focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20'}`;
 
     return (
         <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 flex items-center justify-center">
@@ -196,31 +289,125 @@ function LoginContent() {
                         )}
 
                         {/* Login Form */}
-                        <form onSubmit={handleSubmit} className="space-y-5">
-                            {/* Email Field */}
-                            <div>
-                                <label
-                                    htmlFor="email"
-                                    className="block text-sm font-medium text-slate-300 mb-2"
-                                >
-                                    {isStudent
-                                        ? 'Student Email'
-                                        : 'Faculty Email'}
-                                </label>
-                                <input
-                                    type="email"
-                                    id="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder={
-                                        isStudent
-                                            ? 'student@university.edu'
-                                            : 'faculty@university.edu'
-                                    }
-                                    className={`w-full rounded-xl border bg-slate-950/60 px-4 py-3 text-slate-100 placeholder-slate-500 outline-none transition-all duration-300 ${isStudent ? 'border-slate-700/60 focus:border-emerald-500/60 focus:ring-2 focus:ring-emerald-500/20' : 'border-slate-700/60 focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20'}`}
-                                    required
-                                />
-                            </div>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+
+                            {/* ─── SIGN UP FIELDS ─────────────────────────────── */}
+                            {isSignUp && (
+                                <>
+                                    {/* Username Field */}
+                                    <div>
+                                        <label
+                                            htmlFor="username"
+                                            className="block text-sm font-medium text-slate-300 mb-2"
+                                        >
+                                            Username
+                                        </label>
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm">@</span>
+                                            <input
+                                                type="text"
+                                                id="username"
+                                                value={username}
+                                                onChange={(e) => setUsername(e.target.value.replace(/\s/g, ''))}
+                                                placeholder="choose_a_username"
+                                                className={`${inputClass} pl-8`}
+                                                required
+                                                minLength={3}
+                                                maxLength={20}
+                                            />
+                                        </div>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            3-20 characters. Letters, numbers, and underscores only.
+                                        </p>
+                                    </div>
+
+                                    {/* First Name & Last Name Side-by-Side */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label
+                                                htmlFor="firstName"
+                                                className="block text-sm font-medium text-slate-300 mb-2"
+                                            >
+                                                First Name
+                                            </label>
+                                            <input
+                                                type="text"
+                                                id="firstName"
+                                                value={firstName}
+                                                onChange={(e) => setFirstName(e.target.value)}
+                                                placeholder="John"
+                                                className={inputClass}
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label
+                                                htmlFor="lastName"
+                                                className="block text-sm font-medium text-slate-300 mb-2"
+                                            >
+                                                Last Name
+                                            </label>
+                                            <input
+                                                type="text"
+                                                id="lastName"
+                                                value={lastName}
+                                                onChange={(e) => setLastName(e.target.value)}
+                                                placeholder="Doe"
+                                                className={inputClass}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Email Field (sign up) */}
+                                    <div>
+                                        <label
+                                            htmlFor="signUpEmail"
+                                            className="block text-sm font-medium text-slate-300 mb-2"
+                                        >
+                                            {isStudent ? 'Student Email' : 'Faculty Email'}
+                                        </label>
+                                        <input
+                                            type="email"
+                                            id="signUpEmail"
+                                            value={signUpEmail}
+                                            onChange={(e) => setSignUpEmail(e.target.value)}
+                                            placeholder={
+                                                isStudent
+                                                    ? 'student@university.edu'
+                                                    : 'faculty@university.edu'
+                                            }
+                                            className={inputClass}
+                                            required
+                                        />
+                                    </div>
+                                </>
+                            )}
+
+                            {/* ─── SIGN IN FIELD ──────────────────────────────── */}
+                            {!isSignUp && (
+                                <div>
+                                    <label
+                                        htmlFor="emailOrUsername"
+                                        className="block text-sm font-medium text-slate-300 mb-2"
+                                    >
+                                        Email or Username
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="emailOrUsername"
+                                        value={emailOrUsername}
+                                        onChange={(e) => setEmailOrUsername(e.target.value)}
+                                        placeholder={
+                                            isStudent
+                                                ? 'student@university.edu or @username'
+                                                : 'faculty@university.edu or @username'
+                                        }
+                                        className={inputClass}
+                                        required
+                                    />
+                                </div>
+                            )}
 
                             {/* Password Field */}
                             <div>
@@ -238,7 +425,7 @@ function LoginContent() {
                                         setPassword(e.target.value)
                                     }
                                     placeholder="••••••••"
-                                    className={`w-full rounded-xl border bg-slate-950/60 px-4 py-3 text-slate-100 placeholder-slate-500 outline-none transition-all duration-300 ${isStudent ? 'border-slate-700/60 focus:border-emerald-500/60 focus:ring-2 focus:ring-emerald-500/20' : 'border-slate-700/60 focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20'}`}
+                                    className={inputClass}
                                     required
                                     minLength={6}
                                 />

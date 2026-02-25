@@ -374,7 +374,8 @@ export default function ManageClassroomsPage() {
 
                                         {/* Actions */}
                                         <div className="flex gap-2 pt-3 border-t border-slate-800/60">
-                                            <button
+                                            <Link
+                                                href={`/faculty/classroom/${classroom.code}`}
                                                 className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-xs font-medium text-slate-300 transition-all hover:border-${accent}-400/50 hover:text-${accent === 'cyan' ? 'cyan' : accent === 'violet' ? 'violet' : accent === 'emerald' ? 'emerald' : 'amber'}-300 hover:bg-slate-800/60`}
                                             >
                                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -382,7 +383,7 @@ export default function ManageClassroomsPage() {
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                 </svg>
                                                 View
-                                            </button>
+                                            </Link>
                                             <button
                                                 onClick={() => setDeleteId(classroom.id)}
                                                 className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-xs font-medium text-slate-400 transition-all hover:border-red-500/50 hover:text-red-400 hover:bg-red-500/5"

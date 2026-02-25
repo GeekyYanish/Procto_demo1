@@ -1,0 +1,722 @@
+================================================================================
+                    PROCTO - UI DESIGN DOCUMENT
+              AI-Powered Exam Proctoring System (v3.0)
+        Built for Christ University MCA | Software Project Development
+================================================================================
+
+
+================================================================================
+1. PROJECT OVERVIEW
+================================================================================
+
+Procto is a Next.js-based AI-powered exam proctoring web application designed
+for Christ University's MCA program. The application provides a futuristic,
+cyberpunk-inspired dark-themed interface with distinct portals for Faculty and
+Students. The UI prioritizes a premium, high-tech aesthetic using glassmorphism,
+particle effects, glitch animations, and smooth micro-interactions.
+
+Tech Stack:
+  - Framework      : Next.js (App Router)
+  - Language        : TypeScript (TSX)
+  - Styling         : Tailwind CSS + Custom CSS
+  - Animation       : Framer Motion
+  - Authentication  : Supabase (Email/Password + Google OAuth + GitHub OAuth)
+  - Icons           : Lucide React (icon library)
+  - Fonts           : Inter (UI text) + JetBrains Mono (monospace/code style)
+
+
+================================================================================
+2. DESIGN SYSTEM & GLOBAL STYLES
+================================================================================
+
+2.1 COLOR PALETTE
+-----------------
+The application uses a carefully curated dark-mode palette:
+
+  Primary Background    : #020617 (Slate-950 / near-black)
+  Primary Foreground    : #f1f5f9 (Slate-100 / off-white)
+  Accent Cyan           : #22d3ee (Cyan-400) — primary accent for CTAs & highlights
+  Accent Violet         : #a78bfa (Violet-400) — secondary accent for faculty theme
+  Accent Emerald        : #34d399 (Emerald-400) — student portal identity color
+
+  Role-Based Color Themes:
+    • Landing Page      : Cyan + Violet gradient on Slate-950
+    • Faculty Portal    : Violet + Cyan on Slate-950
+    • Student Portal    : Emerald + Teal on Neutral-950
+    • Login Page        : Dynamic — switches between Emerald (Student) and
+                          Violet (Faculty) based on selected role
+
+2.2 TYPOGRAPHY
+--------------
+  Primary Font  : 'Inter' (weights: 300–800) — Clean, modern sans-serif
+  Mono Font     : 'JetBrains Mono' (weights: 400, 700) — Used for labels,
+                  status indicators, version tags, and code-like elements
+  Heading Style : Extra-bold (font-black), tight letter-spacing (tracking-tighter)
+  Body Style    : Regular weight, relaxed line-height, slate-400 color
+
+2.3 GLASSMORPHISM (Core Visual Pattern)
+----------------------------------------
+Used extensively across all pages:
+
+  • glass class:
+      - Background: rgba(15, 23, 42, 0.6) — semi-transparent dark slate
+      - Backdrop-filter: blur(20px) saturate(180%)
+      - Border: 1px solid rgba(255, 255, 255, 0.08)
+      - Box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37)
+
+  • glass-card class:
+      - Background: rgba(15, 23, 42, 0.5) with blur(12px)
+      - Hover: border glow to cyan, translateY(-2px) lift effect
+      - Smooth cubic-bezier transitions (0.4s)
+
+2.4 CUSTOM ANIMATIONS
+-----------------------
+  • Aurora Background   : Slow-moving gradient animation (15s cycle)
+  • Scanline Overlay    : Retro CRT-style scanning line effect (8s cycle)
+  • Glitch Text Effect  : Dual-layer glitch with cyan & violet offset clips
+  • Particle Field      : Floating particles across the landing page background
+  • Shimmer Button      : Moving light streak across CTAs (3s cycle)
+  • Pulse Glow          : Breathing glow effect on cards (3s cycle)
+  • Border Glow         : Animated border color pulse (3s cycle)
+  • Flicker             : Subtle opacity flicker for status indicators (2s cycle)
+  • Float Reverse       : Gentle floating motion for decorative elements (4s)
+  • 3D Tilt Hover       : perspective(1000px) rotateX/Y on hover with scale(1.02)
+  • Marquee             : Infinite horizontal scroll for keyword ticker (20s)
+  • Stagger Container   : Children animate in with 0.1s delay between each
+  • FadeUp              : Elements slide up 40px with opacity fade (0.6s)
+
+2.5 SCROLLBAR & SELECTION
+--------------------------
+  • Custom scrollbar: 4px width, gradient thumb (cyan -> violet)
+  • Selection color: cyan background with dark text
+  • Smooth scroll behavior enabled globally
+
+
+================================================================================
+3. PAGE-BY-PAGE UI BREAKDOWN
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+3.1 LANDING PAGE  (/)
+────────────────────────────────────────────────────────────────────────────────
+
+Theme: Futuristic cyberpunk, tech-noir aesthetic
+
+Components:
+  a) SCROLL PROGRESS BAR
+     - Fixed at top, 2px height
+     - Gradient: cyan -> violet
+     - Tracks page scroll position in real-time
+
+  b) NAVIGATION BAR (Sticky)
+     - Glass background with blur effect
+     - Left: Shield icon + "PROCTO" logo with "Neural Systems" subtitle
+     - Center (Desktop): Home, Features, About links with animated underlines
+     - Right (Desktop): Login (text), Faculty Portal (shimmer button)
+     - Mobile: Hamburger menu with animated expand/collapse (Framer Motion)
+
+  c) HERO SECTION
+     - Full-width, two-column layout (text left, card right)
+     - Left Column:
+       • Version badge: "Neural Integrity Systems v3.0" (pill-shaped)
+       • Heading: "NEXT-GEN PROCTORING" with GlitchText effect
+       • Gradient text: white -> slate-200 -> slate-500 / cyan -> sky -> violet
+       • Subtitle paragraph in slate-400
+       • Two CTAs: "Faculty Login" (solid cyan) + "Student Login" (bordered)
+     - Right Column:
+       • Live session card (glassmorphism with gradient outer glow)
+       • Shows: Session code (PROCTO-4821), Active students (32)
+       • QR code placeholder with dot pattern
+       • 3-step join instructions
+       • Bottom stats: Anomalies (amber), Focus Score (emerald), Integrity (cyan)
+     - Decorative: Large blurred orbs (cyan/violet) in background
+
+  d) MARQUEE SECTION
+     - Infinite horizontal scroll of keywords
+     - Items: Neural Integrity, AI Proctoring, Real-Time Detection, etc.
+     - Monospace font, slate-600, uppercase, with cyan dot separators
+
+  e) STATS SECTION (Aurora Background)
+     - 4-column grid: Detection Accuracy (99.7%), Response Latency (50ms),
+       Exams Proctored (10000+), System Uptime (24/7)
+     - AnimatedCounter component for smooth number animation on scroll
+     - Staggered fade-up entrance animations
+
+  f) FEATURES GRID SECTION
+     - Section header: "Advanced Neural Modules" / "Powered by Intelligence"
+     - 3-column responsive grid (6 feature cards)
+     - Each card: glass-card + tilt-3d, colored icon + title + description
+     - Features:
+       1. Visual Intelligence (cyan) — gaze tracking, face detection
+       2. Behavioral Analysis (violet) — keystroke, mouse patterns
+       3. Secure Environment (emerald) — locked browser, tab detection
+       4. Identity Verification (pink) — biometric auth
+       5. Edge Processing (sky) — on-device ML inference
+       6. Anomaly Detection (amber) — multi-signal fusion
+
+  g) CAPABILITIES / ABOUT SECTION
+     - Two-column layout
+     - Left: "Core Architecture" / "Neural Protocols" heading
+       • "Built for Christ University MCA" highlighted
+       • 3 capability cards with animated border-glow:
+         - Neuro-Sync Protocol
+         - Visual-Lock Engine
+         - Adaptive Threshold AI
+     - Right: System Status panel
+       • Shows 5 subsystems with ACTIVE/LEARNING status
+       • Integrity Score: 98.7% with animated progress bar
+       • Below: 3 stat boxes (Uptime 99.9%, Exams 50K+, Detection 98%)
+
+  h) CTA SECTION (Aurora Background)
+     - "JOIN THE NEURAL NETWORK" with GlitchText
+     - Description + two buttons (Student Access / Faculty Portal)
+     - Large centered background orb
+
+  i) FOOTER
+     - 4-column grid: Logo, Protocols, Support, Connect
+     - Bottom bar: Copyright + Privacy/Terms links
+     - Monospace font for labels, standard for content
+
+  j) BACKGROUND EFFECTS
+     - ParticleField component (floating particles across entire page)
+     - Scanline overlay (CRT-style sweep)
+
+────────────────────────────────────────────────────────────────────────────────
+3.2 LOGIN PAGE  (/login)
+────────────────────────────────────────────────────────────────────────────────
+
+Theme: Minimal, centered, role-adaptive design
+
+Layout: Single centered card on gradient background
+
+Components:
+  a) DYNAMIC BACKGROUND GLOW
+     - Three blurred orbs that change color based on selected role
+     - Student: Emerald glow | Faculty: Violet glow
+     - Smooth 500ms color transition
+
+  b) LOGO & HEADER
+     - "P" logo icon with role-dependent ring color
+     - "Welcome to Procto" title
+     - Dynamic subtitle: "Sign in to access your exam session / dashboard"
+
+  c) LOGIN CARD (Glassmorphism)
+     - Outer gradient glow (emerald or violet based on role)
+     - Role Toggle Switch:
+       • Pill-shaped toggle between "Student" and "Faculty"
+       • Sliding background indicator (emerald / violet)
+       • Smooth transition animation
+     - Email field: Role-dependent placeholder and focus ring color
+     - Password field: Same adaptive styling
+     - Remember Me checkbox + Forgot Password link
+     - Submit Button:
+       • Student: "Enter Exam Lobby" (emerald)
+       • Faculty: "Access Dashboard" (violet)
+       • Loading spinner on submit
+     - Social Login divider: "or continue with"
+     - Social buttons: Google (with colored logo) + GitHub (monochrome)
+     - Sign Up / Sign In toggle text at bottom
+
+  d) BACK TO HOME LINK
+     - Below the card, centered
+
+────────────────────────────────────────────────────────────────────────────────
+3.3 FACULTY DASHBOARD  (/faculty)
+────────────────────────────────────────────────────────────────────────────────
+
+Theme: Violet-dominant professional layout
+
+Layout: Full-page with header, hero, features grid, footer
+
+Components:
+  a) BACKGROUND GLOW
+     - Fixed: Violet orb top-left, Cyan orb bottom-right
+
+  b) TOP BAR / HEADER
+     - Left: "P" logo icon (cyan ring) + "Procto" / "Intelligent exam proctoring"
+     - Right: Profile button with avatar (gradient violet-cyan initials),
+       display name, "Faculty" label, dropdown arrow
+     - Dropdown Menu (glass card):
+       • My Profile, Settings, Email display, Logout (red)
+
+  c) HERO SECTION (Two-column)
+     - Left Column:
+       • Badge: "Designed for Educators & Administrators" (violet dot)
+       • Heading: "Administer Secure Exams with Confidence."
+         ("Secure Exams" in violet->cyan gradient)
+       • Description paragraph
+       • CTAs: "Create Quiz" + "Manage Quiz" (violet rounded pills)
+       • Feature list: AI-powered monitoring (violet), Instant alerts (cyan),
+         Comprehensive reports (emerald)
+     - Right Column (Dashboard Card):
+       • Outer glow: violet->purple->cyan gradient
+       • Glass card with "Faculty Dashboard" title
+       • Action Buttons (list style):
+         1. Create Classroom (cyan icon, arrow hover)
+         2. Manage Classroom (violet icon, arrow hover)
+         3. Reports (emerald icon, arrow hover)
+       • Each button: icon box + title + description + chevron arrow
+
+  d) FEATURES GRID (3 columns)
+     - Header: "Why Faculty Love Procto"
+     - Cards with gradient hover glow backgrounds:
+       1. Effortless Setup (violet) — One-click exam generation
+       2. Live Proctoring (cyan) — Real-time violation alerts
+       3. Detailed Reports (emerald) — Instant evidence logs
+
+  e) FOOTER
+     - Copyright + "Next.js · Tailwind CSS" tech credits
+
+────────────────────────────────────────────────────────────────────────────────
+3.4 STUDENT DASHBOARD  (/student)
+────────────────────────────────────────────────────────────────────────────────
+
+Theme: Emerald-dominant, high-performance aesthetic
+
+Layout: Same structure as faculty but with emerald palette and neutral-950 base
+
+Components:
+  a) BACKGROUND EFFECTS
+     - Emerald glow orbs (3 total, different positions and opacity)
+     - Carbon Fiber Pattern Overlay (45-degree repeating linear gradient)
+
+  b) TOP BAR / HEADER
+     - Left: "P" logo (emerald ring + shadow) + "Procto" / "Student Portal"
+     - Right: Profile (emerald->teal gradient avatar), dropdown with
+       My Profile, Settings, Email, Logout
+
+  c) HERO SECTION (Two-column)
+     - Left Column:
+       • Badge: "High-Performance Exam Environment" with glowing emerald dot
+       • Heading: "Focus. Speed. Integrity." ("Speed." in emerald)
+       • Description
+       • CTA: "Enter Exam Lobby →" (emerald pill with hover scale effect)
+       • Mini stats: Mobile Ready, Zero Setup Required, Instant Results
+     - Right Column (Student Hub Card):
+       • Outer glow: emerald gradient
+       • "Student Hub" header with pulsing "Online" indicator
+       • Action Buttons:
+         1. Join Classroom — enter class code
+         2. Join Quiz — enter quiz code
+         3. Manage Classroom — view enrolled classes
+       • Each with emerald-tinted icon, hover transitions, chevron arrows
+
+  d) FEATURE GRID (3 columns)
+     - Header: "Built for Performance"
+     - Cards (emerald border, subtle gradient on hover):
+       1. Mobile Ready — responsive on all devices
+       2. Distraction-Free — full-screen focus mode
+       3. Instant Results — immediate performance analytics
+
+  e) FOOTER
+     - Same pattern as faculty footer
+
+────────────────────────────────────────────────────────────────────────────────
+3.5 SUB-PAGES (Faculty)
+────────────────────────────────────────────────────────────────────────────────
+
+  /faculty/create-classroom
+     - Form to create a new classroom (name, description, etc.)
+     - Success overlay with classroom code and "Go to Manage Classroom" button
+
+  /faculty/manage-classrooms
+     - Lists all created classrooms from localStorage
+     - View and delete functionality
+
+  /faculty/create-quiz
+     - Multi-step quiz creation form
+     - Supports MCQ and Descriptive questions
+     - Quiz metadata: title, description, time limit
+     - Generates unique quiz join code on success
+
+  /faculty/manage-quiz
+     - Displays all created quizzes from localStorage
+
+────────────────────────────────────────────────────────────────────────────────
+3.6 SUB-PAGES (Student)
+────────────────────────────────────────────────────────────────────────────────
+
+  /student/join-classroom
+     - Enter class code to join a classroom
+     - Validates against existing classrooms
+
+  /student/join-quiz
+     - Enter quiz code to join an active quiz session
+     - Shows quiz details on validation
+
+  /student/enter-exam
+     - Enter exam code to access the exam room
+     - Pre-exam verification step
+
+  /student/exam-room
+     - Demo exam room with questions and timer
+     - Full-screen exam-taking interface
+
+  /student/classroom
+     - View classroom details
+
+  /student/manage-classrooms
+     - View enrolled classrooms
+
+
+================================================================================
+4. CUSTOM COMPONENTS
+================================================================================
+
+  a) ParticleField (ParticleField.tsx)
+     - Canvas-based floating particle animation
+     - Renders across the landing page background
+     - Creates an ambient, futuristic atmosphere
+
+  b) GlitchText (GlitchText.tsx)
+     - Text component with dual-layer glitch animation
+     - Cyan and violet color offset layers
+     - Uses CSS clip-path polygons for the glitch strips
+
+  c) AnimatedCounter (AnimatedCounter.tsx)
+     - Animates numerical values counting up on scroll
+     - Used in the stats section of the landing page
+     - Supports formats like "99.7%", "50ms", "10000+"
+
+  d) Navbar (Navbar.tsx)
+     - Reusable navigation bar component
+     - Glass background with responsive mobile menu
+
+
+================================================================================
+5. RESPONSIVE DESIGN STRATEGY
+================================================================================
+
+  • Mobile-First approach using Tailwind's responsive prefixes:
+    - sm: (640px), md: (768px), lg: (1024px), xl: (1280px)
+  • Key Breakpoint Behaviors:
+    - Mobile: Single column, hamburger menu, simplified cards
+    - Tablet (md): Two-column grids, visible navigation
+    - Desktop (lg): Full layout with side-by-side hero sections
+    - Large (xl): Max-width containers, increased padding
+  • Touch-Friendly: Large tap targets (px-8 py-4 on CTAs), minimum 44px hit areas
+
+
+================================================================================
+6. AUTHENTICATION FLOW (UI Perspective)
+================================================================================
+
+  1. User lands on Landing Page (/)
+  2. Clicks "Faculty Login" or "Student Login" → Navigates to /login?role=faculty/student
+  3. Login page pre-selects the correct role toggle
+  4. User can:
+     a. Sign in with Email + Password
+     b. Sign up with Email + Password
+     c. Sign in with Google OAuth
+     d. Sign in with GitHub OAuth
+  5. On success → Redirects to /faculty or /student based on role
+  6. Middleware protects /faculty and /student routes (requires auth)
+  7. Profile dropdown on dashboards provides Logout functionality
+
+
+================================================================================
+7. UI DESIGN PRINCIPLES FOLLOWED
+================================================================================
+
+  1. DARK MODE FIRST       → Reduces eye strain, premium feel
+  2. GLASSMORPHISM          → Depth without visual clutter
+  3. ROLE-BASED THEMING     → Distinct visual identity per user type
+  4. MICRO-INTERACTIONS     → Hover effects, transitions, animated elements
+  5. PROGRESSIVE DISCLOSURE → Dashboard cards reveal details on interaction
+  6. CONSISTENT SPACING     → Tailwind's spacing scale for uniform layouts
+  7. ACCESSIBILITY          → Semantic HTML, focus states, heading hierarchy
+  8. PERFORMANCE            → On-device animations, lazy-loaded components
+
+
+================================================================================
+================================================================================
+
+                    PRESENTATION ROADMAP
+             How to Build Your UI Design Presentation
+
+================================================================================
+================================================================================
+
+
+SLIDE STRUCTURE & CONTENT ROADMAP
+===================================
+
+Below is a detailed, slide-by-slide roadmap for creating a compelling
+presentation on the Procto UI Design:
+
+
+────────────────────────────────────────────────────────────────────────────────
+SLIDE 1: TITLE SLIDE
+────────────────────────────────────────────────────────────────────────────────
+  Content:
+    - Title: "PROCTO — UI/UX Design Overview"
+    - Subtitle: "AI-Powered Exam Proctoring System v3.0"
+    - Course: Software Project Development (SPD) | MCA | Christ University
+    - Team member names
+    - Date of presentation
+  Design Tip: Use a dark background (slate-950) with a cyan-violet gradient
+  accent line at the bottom. Place the PROCTO shield logo prominently.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SLIDE 2: PROJECT INTRODUCTION
+────────────────────────────────────────────────────────────────────────────────
+  Content:
+    - What is Procto? (Brief, 2-3 bullet points)
+    - Problem: Online exam integrity challenges
+    - Solution: AI-powered real-time proctoring
+    - Target Users: Faculty (Exam creators) + Students (Exam takers)
+  Visuals: Simple icon-driven layout with shield + eye + brain icons
+
+
+────────────────────────────────────────────────────────────────────────────────
+SLIDE 3: TECH STACK OVERVIEW
+────────────────────────────────────────────────────────────────────────────────
+  Content:
+    - List with logos: Next.js, TypeScript, Tailwind CSS, Framer Motion,
+      Supabase, Lucide Icons
+    - Mention: Inter + JetBrains Mono fonts
+  Design Tip: Use a grid of tech logos with labels beneath each
+
+
+────────────────────────────────────────────────────────────────────────────────
+SLIDE 4: DESIGN SYSTEM — COLOR PALETTE
+────────────────────────────────────────────────────────────────────────────────
+  Content:
+    - Show the complete color palette with swatches:
+      • Slate-950 background, Slate-100 foreground
+      • Cyan-400 (#22d3ee) — Primary accent
+      • Violet-400 (#a78bfa) — Faculty accent
+      • Emerald-400 (#34d399) — Student accent
+    - Explain role-based theming (Faculty = Violet, Student = Emerald)
+  Visuals: Color swatch circles with hex codes below each
+
+
+────────────────────────────────────────────────────────────────────────────────
+SLIDE 5: DESIGN SYSTEM — TYPOGRAPHY & SPACING
+────────────────────────────────────────────────────────────────────────────────
+  Content:
+    - Font samples: Inter (headings + body) vs JetBrains Mono (labels + code)
+    - Show heading hierarchy: h1 (5xl-8xl, font-black), h2 (4xl-5xl),
+      h3 (lg-xl), body (base-lg)
+    - Spacing system: Tailwind's 4px grid (py-4, px-6, gap-8, etc.)
+  Visuals: Type specimens side by side
+
+
+────────────────────────────────────────────────────────────────────────────────
+SLIDE 6: DESIGN SYSTEM — EFFECTS & ANIMATIONS
+────────────────────────────────────────────────────────────────────────────────
+  Content:
+    - Glassmorphism: glass/glass-card showcase (blur + transparency)
+    - Glitch Text: Dual-layer cyan/violet glitch animation
+    - Particle Field: Background ambient particles
+    - Shimmer Buttons: Moving light streak CTAs
+    - 3D Tilt Hover: Perspective transform on cards
+    - Aurora Background: Slow-moving gradient loop
+    - Scanline Overlay: CRT-style retro sweep
+  Visuals: Screenshots or short GIF/video clips of each effect
+  Design Tip: Use a 2x3 or 3x3 grid showing before/after hover states
+
+
+────────────────────────────────────────────────────────────────────────────────
+SLIDE 7: USER FLOW DIAGRAM
+────────────────────────────────────────────────────────────────────────────────
+  Content:
+    Show the complete navigation flow:
+
+    Landing Page (/) 
+        → Login (/login?role=student OR faculty)
+            → Student Dashboard (/student)
+                → Join Classroom
+                → Join Quiz
+                → Enter Exam → Exam Room
+                → Manage Classrooms
+            → Faculty Dashboard (/faculty)
+                → Create Classroom
+                → Manage Classrooms
+                → Create Quiz
+                → Manage Quiz
+                → Reports
+
+  Visuals: Flowchart or sitemap diagram with color-coded paths
+  (Emerald for student flow, Violet for faculty flow)
+
+
+────────────────────────────────────────────────────────────────────────────────
+SLIDE 8: LANDING PAGE WALKTHROUGH
+────────────────────────────────────────────────────────────────────────────────
+  Content:
+    - Full-page screenshot(s) of the landing page
+    - Annotate key sections:
+      • Scroll Progress Bar
+      • Navbar with glassmorphism
+      • Hero with GlitchText + ParticleField background
+      • Live Session preview card
+      • Marquee ticker
+      • Stats with animated counters
+      • Feature grid (6 cards)
+      • Capabilities / About section with system status panel
+      • CTA and Footer
+  Visuals: Annotated screenshot(s) with numbered callouts
+  Design Tip: May need 2 slides if showing full scroll. Use a
+  scrolling mockup or split into "above the fold" and "below the fold"
+
+
+────────────────────────────────────────────────────────────────────────────────
+SLIDE 9: LOGIN PAGE DESIGN
+────────────────────────────────────────────────────────────────────────────────
+  Content:
+    - Side-by-side comparison: Student mode vs Faculty mode
+    - Highlight the dynamic role toggle and color transitions
+    - Show: Social login (Google + GitHub), form fields, error/success states
+  Visuals: Two screenshots placed side by side
+
+
+────────────────────────────────────────────────────────────────────────────────
+SLIDE 10: FACULTY DASHBOARD DESIGN
+────────────────────────────────────────────────────────────────────────────────
+  Content:
+    - Full screenshot of the Faculty Dashboard
+    - Annotate:
+      • Profile dropdown
+      • Hero section with CTAs
+      • Action cards (Create Classroom, Manage Classroom, Reports)
+      • Features grid ("Why Faculty Love Procto")
+  Visuals: Annotated screenshot with callouts
+
+
+────────────────────────────────────────────────────────────────────────────────
+SLIDE 11: FACULTY SUB-PAGES
+────────────────────────────────────────────────────────────────────────────────
+  Content:
+    - Screenshots of:
+      • Create Classroom page (form layout)
+      • Manage Classrooms page (list view)
+      • Create Quiz page (multi-step form with MCQ/Descriptive support)
+      • Manage Quiz page (quiz listing)
+  Visuals: 2x2 grid of screenshots, or a carousel if animated
+
+
+────────────────────────────────────────────────────────────────────────────────
+SLIDE 12: STUDENT DASHBOARD DESIGN
+────────────────────────────────────────────────────────────────────────────────
+  Content:
+    - Full screenshot of the Student Dashboard
+    - Annotate:
+      • Emerald color theme
+      • Carbon fiber pattern overlay
+      • Hero with "Focus. Speed. Integrity."
+      • Student Hub card (Join Classroom, Join Quiz, Manage Classroom)
+      • Feature grid ("Built for Performance")
+  Visuals: Annotated screenshot with callouts
+
+
+────────────────────────────────────────────────────────────────────────────────
+SLIDE 13: STUDENT SUB-PAGES
+────────────────────────────────────────────────────────────────────────────────
+  Content:
+    - Screenshots of:
+      • Join Classroom page
+      • Join Quiz page
+      • Enter Exam page
+      • Exam Room (demo with questions)
+  Visuals: 2x2 grid of screenshots
+
+
+────────────────────────────────────────────────────────────────────────────────
+SLIDE 14: RESPONSIVE DESIGN
+────────────────────────────────────────────────────────────────────────────────
+  Content:
+    - Show the same page at different breakpoints:
+      • Mobile (375px), Tablet (768px), Desktop (1280px+)
+    - Highlight:
+      • Hamburger menu on mobile
+      • Column stacking behavior
+      • Touch-friendly button sizes
+  Visuals: Three device mockups side by side (phone, tablet, laptop)
+
+
+────────────────────────────────────────────────────────────────────────────────
+SLIDE 15: AUTHENTICATION FLOW
+────────────────────────────────────────────────────────────────────────────────
+  Content:
+    - Visual flow:
+      Landing Page → Login (Role Selection) → Supabase Auth
+      → Email/Password OR Google/GitHub OAuth → Dashboard redirect
+    - Middleware protection for authenticated routes
+  Visuals: Flowchart with auth provider logos
+
+
+────────────────────────────────────────────────────────────────────────────────
+SLIDE 16: KEY UI DESIGN PRINCIPLES
+────────────────────────────────────────────────────────────────────────────────
+  Content:
+    - 4-6 principles, each with a one-liner and an icon:
+      1. Dark Mode First — Premium aesthetic, reduced eye strain
+      2. Glassmorphism — Depth without visual clutter
+      3. Role-Based Theming — Distinct identity per user type
+      4. Micro-Interactions — Hover effects, transitions, smooth animations
+      5. Progressive Disclosure — Information revealed contextually
+      6. Responsive & Accessible — Works on all devices and screen readers
+  Visuals: Icon + principle title + short description in card layout
+
+
+────────────────────────────────────────────────────────────────────────────────
+SLIDE 17: FUTURE SCOPE / IMPROVEMENTS
+────────────────────────────────────────────────────────────────────────────────
+  Content:
+    - Real-time video feed integration in exam room
+    - AI violation detection overlay with camera/microphone indicators
+    - Analytics dashboard for faculty with charts and heatmaps
+    - PWA support for mobile devices
+    - Accessibility improvements (ARIA labels, screen reader testing)
+    - Dark/Light theme toggle
+
+
+────────────────────────────────────────────────────────────────────────────────
+SLIDE 18: THANK YOU / Q&A
+────────────────────────────────────────────────────────────────────────────────
+  Content:
+    - "Thank you!" with team contact information
+    - GitHub repository link (if applicable)
+    - Open for questions
+  Design Tip: Use the same dark theme with a large PROCTO logo centered
+
+
+================================================================================
+PRESENTATION TIPS
+================================================================================
+
+  1. TOOL RECOMMENDATION:
+     - Use Google Slides, Canva, or PowerPoint
+     - For a premium look, use Canva's dark-themed templates and customize
+       with the Procto color palette (cyan/violet/emerald)
+
+  2. SCREENSHOT CAPTURE:
+     - Run the project locally (npm run dev) and take full-page screenshots
+     - Use browser DevTools to capture at different viewport widths
+     - For animations, record short screen captures (GIFs or MP4s)
+
+  3. CONSISTENCY:
+     - Use the same dark background (slate-950 or #020617) across all slides
+     - Use Inter font in the presentation for consistency with the project
+     - Use the accent colors (cyan, violet, emerald) for highlights
+
+  4. ANNOTATIONS:
+     - Add numbered callout circles on screenshots
+     - Use thin arrow lines pointing to specific UI elements
+     - Keep annotation text brief (2-5 words each)
+
+  5. TIMING:
+     - Aim for 15-20 minutes total presentation
+     - Spend ~1 minute per slide maximum
+     - Allow 3-5 minutes for Q&A at the end
+
+  6. DEMO:
+     - If possible, include a live demo of the running application
+     - Navigate through the key flows: Landing → Login → Dashboard → Actions
+     - Show the animations and hover effects in real-time
+
+================================================================================
+                        END OF DOCUMENT
+================================================================================
