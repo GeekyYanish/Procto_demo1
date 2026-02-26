@@ -4,44 +4,53 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
+
+interface AppUser {
+    id: string;
+    email: string;
+    username?: string | null;
+    firstName: string;
+    lastName: string;
+    role: string;
+}
 
 export default function FacultyPage() {
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<AppUser | null>(null);
     const router = useRouter();
 
     useEffect(() => {
-        const supabase = createClient();
         const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
+            try {
+                const res = await fetch('/api/auth/me');
+                if (res.ok) {
+                    const data = await res.json();
+                    setUser(data.user);
+                }
+            } catch { /* ignore */ }
         };
         getUser();
     }, []);
 
     const handleLogout = async () => {
-        const supabase = createClient();
-        await supabase.auth.signOut();
+        await fetch('/api/auth/logout', { method: 'POST' });
         router.push('/');
         router.refresh();
     };
 
     // Get user initials for avatar
     const getInitials = () => {
-        if (!user?.email) return 'FC';
-        const parts = user.email.split('@')[0].split('.');
-        if (parts.length >= 2) {
-            return (parts[0][0] + parts[1][0]).toUpperCase();
+        if (user?.firstName && user?.lastName) {
+            return (user.firstName[0] + user.lastName[0]).toUpperCase();
         }
+        if (!user?.email) return 'FC';
         return user.email.substring(0, 2).toUpperCase();
     };
 
     // Get display name
     const getDisplayName = () => {
-        if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
+        if (user?.firstName) return `${user.firstName} ${user.lastName}`;
         if (!user?.email) return 'Faculty';
-        return user.email.split('@')[0].replace('.', ' ').replace(/\b\w/g, c => c.toUpperCase());
+        return user.email.split('@')[0];
     };
 
     return (
@@ -149,9 +158,9 @@ export default function FacultyPage() {
                                     </svg>
                                     Settings
                                 </a>
-                                {user?.email && (
+                                {!!user?.email && (
                                     <div className="px-3 py-2 text-xs text-slate-500 truncate border-t border-slate-700/60 mt-1 pt-2">
-                                        {user.email}
+                                        {String(user.email)}
                                     </div>
                                 )}
                                 <button
@@ -334,46 +343,38 @@ export default function FacultyPage() {
 
 
 
-                                        {/* Reports Button */}
-                                        <button className="group relative w-full flex items-center gap-4 rounded-xl border border-slate-700/60 bg-slate-900/60 p-4 hover:border-emerald-400/50 hover:bg-slate-800/60 transition-all duration-300">
+                                        {/* Reports Button → Grading */}
+                                        <Link href="/faculty/grading" className="group relative w-full flex items-center gap-4 rounded-xl border border-slate-700/60 bg-slate-900/60 p-4 hover:border-emerald-400/50 hover:bg-slate-800/60 transition-all duration-300">
                                             <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center group-hover:bg-emerald-500/30 transition-colors">
-                                                <svg
-                                                    className="w-6 h-6 text-emerald-400"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                                    />
+                                                <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                 </svg>
                                             </div>
                                             <div className="flex-1 text-left">
-                                                <h4 className="text-base font-semibold text-slate-100">
-                                                    Reports
-                                                </h4>
-                                                <p className="text-xs text-slate-400">
-                                                    View analytics and exam
-                                                    reports
-                                                </p>
+                                                <h4 className="text-base font-semibold text-slate-100">Grading</h4>
+                                                <p className="text-xs text-slate-400">Grade exams and publish results</p>
                                             </div>
-                                            <svg
-                                                className="w-5 h-5 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M9 5l7 7-7 7"
-                                                />
+                                            <svg className="w-5 h-5 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                             </svg>
-                                        </button>
+                                        </Link>
+
+                                        {/* Proctor Dashboard */}
+                                        <Link href="/faculty/proctor-dashboard" className="group relative w-full flex items-center gap-4 rounded-xl border border-slate-700/60 bg-slate-900/60 p-4 hover:border-red-400/50 hover:bg-slate-800/60 transition-all duration-300">
+                                            <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center group-hover:bg-red-500/30 transition-colors">
+                                                <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                            </div>
+                                            <div className="flex-1 text-left">
+                                                <h4 className="text-base font-semibold text-slate-100">Proctor Dashboard</h4>
+                                                <p className="text-xs text-slate-400">Monitor active exam sessions live</p>
+                                            </div>
+                                            <svg className="w-5 h-5 text-slate-500 group-hover:text-red-400 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </Link>
                                     </div>
                                 </div>
                             </div>

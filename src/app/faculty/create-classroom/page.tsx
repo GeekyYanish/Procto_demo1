@@ -4,11 +4,9 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
 
 export default function CreateClassroomPage() {
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<Record<string, unknown> | null>(null);
     const router = useRouter();
 
     // Form state
@@ -25,31 +23,20 @@ export default function CreateClassroomPage() {
     const [generatedCode, setGeneratedCode] = useState('');
 
     useEffect(() => {
-        const supabase = createClient();
         const getUser = async () => {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
-            setUser(user);
+            try {
+                const res = await fetch('/api/auth/me');
+                if (res.ok) { const data = await res.json(); setUser(data.user); }
+            } catch { /* ignore */ }
         };
         getUser();
     }, []);
 
     const handleLogout = async () => {
-        const supabase = createClient();
-        await supabase.auth.signOut();
+        
+        await fetch('/api/auth/logout', { method: 'POST' });
         router.push('/');
         router.refresh();
-    };
-
-    // Generate a random classroom code
-    const generateCode = () => {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let code = '';
-        for (let i = 0; i < 4; i++) {
-            code += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return `PROCTO-${code}`;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -71,30 +58,35 @@ export default function CreateClassroomPage() {
 
         setLoading(true);
 
-        // Simulate network request
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        try {
+            const res = await fetch('/api/courses', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: `${classroomName.trim()} — ${subject.trim()}`,
+                    description: [
+                        `Course: ${courseCode.trim()}`,
+                        section.trim() ? `Section: ${section.trim()}` : '',
+                        description.trim() || '',
+                    ].filter(Boolean).join(' | '),
+                }),
+            });
 
-        const code = generateCode();
+            const data = await res.json();
 
-        // Save to localStorage
-        const newClassroom = {
-            id: crypto.randomUUID(),
-            code,
-            name: classroomName.trim(),
-            courseCode: courseCode.trim(),
-            subject: subject.trim(),
-            section: section.trim() || undefined,
-            description: description.trim() || undefined,
-            createdAt: new Date().toISOString(),
-            students: 0,
-        };
-        const existing = JSON.parse(localStorage.getItem('procto_classrooms') || '[]');
-        existing.push(newClassroom);
-        localStorage.setItem('procto_classrooms', JSON.stringify(existing));
+            if (!res.ok) {
+                setError(data.error || 'Failed to create classroom.');
+                setLoading(false);
+                return;
+            }
 
-        setGeneratedCode(code);
-        setSuccess(true);
-        setLoading(false);
+            setGeneratedCode(data.course.code);
+            setSuccess(true);
+        } catch {
+            setError('Network error. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleReset = () => {
@@ -110,22 +102,18 @@ export default function CreateClassroomPage() {
 
     // Get user initials for avatar
     const getInitials = () => {
-        if (!user?.email) return 'FC';
-        const parts = user.email.split('@')[0].split('.');
-        if (parts.length >= 2) {
-            return (parts[0][0] + parts[1][0]).toUpperCase();
-        }
-        return user.email.substring(0, 2).toUpperCase();
+        const u = user as Record<string, string> | null;
+        if (u?.firstName && u?.lastName) return (u.firstName[0] + u.lastName[0]).toUpperCase();
+        if (!u?.email) return 'FC';
+        return u.email.substring(0, 2).toUpperCase();
     };
 
     // Get display name
     const getDisplayName = () => {
-        if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
-        if (!user?.email) return 'Faculty';
-        return user.email
-            .split('@')[0]
-            .replace('.', ' ')
-            .replace(/\b\w/g, (c: string) => c.toUpperCase());
+        const u = user as Record<string, string> | null;
+        if (u?.firstName) return `${u.firstName} ${u.lastName}`;
+        if (!u?.email) return 'Faculty';
+        return u.email.split('@')[0];
     };
 
     return (
@@ -208,9 +196,9 @@ export default function CreateClassroomPage() {
                                     </svg>
                                     Settings
                                 </a>
-                                {user?.email && (
+                                {!!user?.email && (
                                     <div className="px-3 py-2 text-xs text-slate-500 truncate border-t border-slate-700/60 mt-1 pt-2">
-                                        {user.email}
+                                        {String(user.email)}
                                     </div>
                                 )}
                                 <button

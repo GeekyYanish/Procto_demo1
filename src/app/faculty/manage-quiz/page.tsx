@@ -4,8 +4,6 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
 
 // ── Types (mirrors create-quiz) ──
 interface MCQQuestion {
@@ -96,66 +94,76 @@ const colorMap: Record<
 };
 
 export default function ManageQuizPage() {
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<Record<string, unknown> | null>(null);
     const [quizzes, setQuizzes] = useState<Quiz[]>([]);
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const router = useRouter();
 
     useEffect(() => {
-        const supabase = createClient();
         const getUser = async () => {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
-            setUser(user);
+            try {
+                const res = await fetch('/api/auth/me');
+                if (res.ok) { const data = await res.json(); setUser(data.user); }
+            } catch { /* ignore */ }
         };
         getUser();
     }, []);
 
-    // Load quizzes from localStorage
+    // Load quizzes from API
     useEffect(() => {
-        const stored = localStorage.getItem('procto_quizzes');
-        if (stored) {
+        const fetchQuizzes = async () => {
             try {
-                setQuizzes(JSON.parse(stored));
+                const res = await fetch('/api/exams');
+                if (res.ok) {
+                    const data = await res.json();
+                    setQuizzes(data.exams.map((e: Record<string, unknown>) => ({
+                        id: e.id as string,
+                        code: (e.id as string).slice(0, 8).toUpperCase(),
+                        title: e.title as string,
+                        description: (e.instructions as string) || undefined,
+                        timeLimit: e.durationMinutes as number,
+                        questions: [],
+                        createdAt: e.createdAt as string,
+                    })));
+                }
             } catch {
                 setQuizzes([]);
             }
-        }
+        };
+        fetchQuizzes();
     }, []);
 
     const handleLogout = async () => {
-        const supabase = createClient();
-        await supabase.auth.signOut();
+
+        await fetch('/api/auth/logout', { method: 'POST' });
         router.push('/');
         router.refresh();
     };
 
-    const handleDelete = (id: string) => {
-        const updated = quizzes.filter((q) => q.id !== id);
-        setQuizzes(updated);
-        localStorage.setItem('procto_quizzes', JSON.stringify(updated));
+    const handleDelete = async (id: string) => {
+        try {
+            const res = await fetch(`/api/exams/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                setQuizzes((prev) => prev.filter((q) => q.id !== id));
+            }
+        } catch { /* ignore */ }
         setDeleteId(null);
         if (expandedId === id) setExpandedId(null);
     };
 
     const getInitials = () => {
-        if (!user?.email) return 'FC';
-        const parts = user.email.split('@')[0].split('.');
-        if (parts.length >= 2) {
-            return (parts[0][0] + parts[1][0]).toUpperCase();
-        }
-        return user.email.substring(0, 2).toUpperCase();
+        const u = user as Record<string, string> | null;
+        if (u?.firstName && u?.lastName) return (u.firstName[0] + u.lastName[0]).toUpperCase();
+        if (!u?.email) return 'FC';
+        return u.email.substring(0, 2).toUpperCase();
     };
 
     const getDisplayName = () => {
-        if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
-        if (!user?.email) return 'Faculty';
-        return user.email
-            .split('@')[0]
-            .replace('.', ' ')
-            .replace(/\b\w/g, (c: string) => c.toUpperCase());
+        const u = user as Record<string, string> | null;
+        if (u?.firstName) return `${u.firstName} ${u.lastName}`;
+        if (!u?.email) return 'Faculty';
+        return u.email.split('@')[0];
     };
 
     const getAccent = (index: number): Accent =>
@@ -258,9 +266,9 @@ export default function ManageQuizPage() {
                                     </svg>
                                     Settings
                                 </a>
-                                {user?.email && (
+                                {!!user?.email && (
                                     <div className="px-3 py-2 text-xs text-slate-500 truncate border-t border-slate-700/60 mt-1 pt-2">
-                                        {user.email}
+                                        {String(user.email)}
                                     </div>
                                 )}
                                 <button

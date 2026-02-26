@@ -4,8 +4,6 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
 
 // ── Types ──
 interface MCQQuestion {
@@ -37,13 +35,15 @@ interface Quiz {
 }
 
 export default function CreateQuizPage() {
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<Record<string, unknown> | null>(null);
     const router = useRouter();
 
     // Quiz metadata
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [timeLimit, setTimeLimit] = useState<number | ''>('');
+    const [courseId, setCourseId] = useState('');
+    const [courses, setCourses] = useState<{ id: string; code: string; name: string }[]>([]);
 
     // Questions
     const [questions, setQuestions] = useState<Question[]>([]);
@@ -56,47 +56,50 @@ export default function CreateQuizPage() {
     const [showAddMenu, setShowAddMenu] = useState(false);
 
     useEffect(() => {
-        const supabase = createClient();
         const getUser = async () => {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
-            setUser(user);
+            try {
+                const res = await fetch('/api/auth/me');
+                if (res.ok) { const data = await res.json(); setUser(data.user); }
+            } catch { /* ignore */ }
         };
         getUser();
     }, []);
 
+    // Fetch faculty courses for selector
+    useEffect(() => {
+        const fetchCourses = async () => {
+            try {
+                const res = await fetch('/api/courses');
+                if (res.ok) {
+                    const data = await res.json();
+                    setCourses(data.courses);
+                    if (data.courses.length > 0) setCourseId(data.courses[0].id);
+                }
+            } catch { /* ignore */ }
+        };
+        fetchCourses();
+    }, []);
+
     const handleLogout = async () => {
-        const supabase = createClient();
-        await supabase.auth.signOut();
+        
+        await fetch('/api/auth/logout', { method: 'POST' });
         router.push('/');
         router.refresh();
     };
 
     // ── Helpers ──
     const getInitials = () => {
-        if (!user?.email) return 'FC';
-        const parts = user.email.split('@')[0].split('.');
-        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-        return user.email.substring(0, 2).toUpperCase();
+        const u = user as Record<string, string> | null;
+        if (u?.firstName && u?.lastName) return (u.firstName[0] + u.lastName[0]).toUpperCase();
+        if (!u?.email) return 'FC';
+        return u.email.substring(0, 2).toUpperCase();
     };
 
     const getDisplayName = () => {
-        if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
-        if (!user?.email) return 'Faculty';
-        return user.email
-            .split('@')[0]
-            .replace('.', ' ')
-            .replace(/\b\w/g, (c: string) => c.toUpperCase());
-    };
-
-    const generateCode = () => {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let code = '';
-        for (let i = 0; i < 4; i++) {
-            code += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return `QUIZ-${code}`;
+        const u = user as Record<string, string> | null;
+        if (u?.firstName) return `${u.firstName} ${u.lastName}`;
+        if (!u?.email) return 'Faculty';
+        return u.email.split('@')[0];
     };
 
     // ── Question CRUD ──
@@ -160,6 +163,10 @@ export default function CreateQuizPage() {
     const handleSubmit = async () => {
         setError('');
 
+        if (!courseId) {
+            setError('Please select a course.');
+            return;
+        }
         if (!title.trim()) {
             setError('Please enter a quiz title.');
             return;
@@ -193,33 +200,74 @@ export default function CreateQuizPage() {
         }
 
         setLoading(true);
-        await new Promise((r) => setTimeout(r, 800));
 
-        const code = generateCode();
-        const quiz: Quiz = {
-            id: crypto.randomUUID(),
-            code,
-            title: title.trim(),
-            description: description.trim() || undefined,
-            timeLimit: Number(timeLimit),
-            questions,
-            createdAt: new Date().toISOString(),
-            createdBy: user?.email || undefined,
-        };
+        try {
+            // Map frontend question types to Prisma QuestionType
+            const apiQuestions = questions.map((q) => {
+                if (q.type === 'mcq') {
+                    const mcq = q as MCQQuestion;
+                    return {
+                        type: 'MULTIPLE_CHOICE',
+                        content: {
+                            text: mcq.questionText,
+                            options: mcq.options,
+                            correctAnswer: mcq.correctOption,
+                        },
+                        points: 1,
+                    };
+                } else {
+                    const desc = q as DescriptiveQuestion;
+                    return {
+                        type: 'ESSAY',
+                        content: {
+                            text: desc.questionText,
+                            maxWords: desc.maxWords,
+                        },
+                        points: 5,
+                    };
+                }
+            });
 
-        const existing = JSON.parse(localStorage.getItem('procto_quizzes') || '[]');
-        existing.push(quiz);
-        localStorage.setItem('procto_quizzes', JSON.stringify(existing));
+            // Schedule 1 hour from now as default
+            const startAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+            const endAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-        setGeneratedCode(code);
-        setSuccess(true);
-        setLoading(false);
+            const res = await fetch('/api/exams', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    courseId,
+                    title: title.trim(),
+                    description: description.trim() || undefined,
+                    durationMinutes: Number(timeLimit),
+                    startAt,
+                    endAt,
+                    questions: apiQuestions,
+                }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setError(data.error || 'Failed to create quiz.');
+                setLoading(false);
+                return;
+            }
+
+            setGeneratedCode(data.exam.id.slice(0, 8).toUpperCase());
+            setSuccess(true);
+        } catch {
+            setError('Network error. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleReset = () => {
         setTitle('');
         setDescription('');
         setTimeLimit('');
+        setCourseId(courses.length > 0 ? courses[0].id : '');
         setQuestions([]);
         setError('');
         setSuccess(false);
@@ -277,9 +325,9 @@ export default function CreateQuizPage() {
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                     Settings
                                 </a>
-                                {user?.email && (
+                                {!!user?.email && (
                                     <div className="px-3 py-2 text-xs text-slate-500 truncate border-t border-slate-700/60 mt-1 pt-2">
-                                        {user.email}
+                                        {String(user.email)}
                                     </div>
                                 )}
                                 <button
@@ -436,6 +484,22 @@ export default function CreateQuizPage() {
 
                                         {/* ── Quiz Metadata ── */}
                                         <div className="space-y-5 mb-8">
+                                            <div>
+                                                <label htmlFor="courseSelect" className="block text-sm font-medium text-slate-300 mb-2">
+                                                    Course <span className="text-red-400">*</span>
+                                                </label>
+                                                <select
+                                                    id="courseSelect"
+                                                    value={courseId}
+                                                    onChange={(e) => setCourseId(e.target.value)}
+                                                    className="w-full rounded-xl border border-slate-700/80 bg-slate-950/60 px-4 py-3 text-white outline-none transition-all duration-300 focus:border-cyan-500/60 focus:ring-2 focus:ring-cyan-500/20"
+                                                >
+                                                    <option value="">Select a course…</option>
+                                                    {courses.map((c) => (
+                                                        <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
+                                                    ))}
+                                                </select>
+                                            </div>
                                             <div>
                                                 <label htmlFor="quizTitle" className="block text-sm font-medium text-slate-300 mb-2">
                                                     Quiz Title <span className="text-red-400">*</span>

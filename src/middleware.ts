@@ -1,75 +1,74 @@
-import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { jwtVerify } from 'jose';
+
+const JWT_SECRET = new TextEncoder().encode(
+    process.env.JWT_SECRET || 'dev-secret-change-me'
+);
 
 export async function middleware(request: NextRequest) {
-    let supabaseResponse = NextResponse.next({ request });
+    const token = request.cookies.get('token')?.value;
+    const { pathname } = request.nextUrl;
 
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return request.cookies.getAll();
-                },
-                setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value }) =>
-                        request.cookies.set(name, value)
-                    );
-                    supabaseResponse = NextResponse.next({ request });
-                    cookiesToSet.forEach(({ name, value, options }) =>
-                        supabaseResponse.cookies.set(name, value, options)
-                    );
-                },
-            },
+    // Public routes that don't need auth
+    const isPublicRoute =
+        pathname === '/' ||
+        pathname.startsWith('/login') ||
+        pathname.startsWith('/api/auth');
+
+    if (isPublicRoute) {
+        // If user is authenticated and trying to access login, redirect to dashboard
+        if (pathname.startsWith('/login') && token) {
+            try {
+                const { payload } = await jwtVerify(token, JWT_SECRET);
+                const role = (payload as { role?: string }).role;
+                const url = request.nextUrl.clone();
+                url.pathname = role === 'FACULTY' ? '/faculty' : '/student';
+                return NextResponse.redirect(url);
+            } catch {
+                // Token invalid, let them go to login
+            }
         }
-    );
+        return NextResponse.next();
+    }
 
-    // IMPORTANT: Do not add logic between createServerClient and
-    // supabase.auth.getUser(). A simple mistake could make it very
-    // hard to debug issues with users being randomly logged out.
-
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
-
-    // If user is not signed in and trying to access protected routes,
-    // redirect them to the login page
-    if (
-        !user &&
-        !request.nextUrl.pathname.startsWith('/login') &&
-        !request.nextUrl.pathname.startsWith('/auth') &&
-        request.nextUrl.pathname !== '/'
-    ) {
+    // Protected routes — verify JWT
+    if (!token) {
         const url = request.nextUrl.clone();
         url.pathname = '/login';
         return NextResponse.redirect(url);
     }
 
-    // If user is signed in and trying to access login page,
-    // redirect them to the appropriate dashboard
-    if (user && request.nextUrl.pathname.startsWith('/login')) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/student'; // Default redirect; you can customize based on user role
-        return NextResponse.redirect(url);
-    }
+    try {
+        const { payload } = await jwtVerify(token, JWT_SECRET);
+        const role = (payload as { role?: string }).role;
 
-    // IMPORTANT: You *must* return the supabaseResponse object as-is.
-    // If you're creating a new response object, make sure to:
-    // 1. Pass the request in it: NextResponse.next({ request })
-    // 2. Copy over the cookies: supabaseResponse.cookies
-    return supabaseResponse;
+        // Role-based route protection
+        if (pathname.startsWith('/faculty') && role !== 'FACULTY') {
+            const url = request.nextUrl.clone();
+            url.pathname = '/student';
+            return NextResponse.redirect(url);
+        }
+
+        if (pathname.startsWith('/student') && role !== 'STUDENT') {
+            const url = request.nextUrl.clone();
+            url.pathname = '/faculty';
+            return NextResponse.redirect(url);
+        }
+
+        return NextResponse.next();
+    } catch {
+        // Token invalid or expired — redirect to login
+        const url = request.nextUrl.clone();
+        url.pathname = '/login';
+        const response = NextResponse.redirect(url);
+        response.cookies.delete('token');
+        response.cookies.delete('refreshToken');
+        return response;
+    }
 }
 
 export const config = {
     matcher: [
-        /*
-         * Match all request paths except for the ones starting with:
-         * - _next/static (static files)
-         * - _next/image (image optimization files)
-         * - favicon.ico (favicon file)
-         * - public folder assets
-         */
         '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
 };

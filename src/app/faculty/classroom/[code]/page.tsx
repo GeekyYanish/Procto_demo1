@@ -4,8 +4,8 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
+
+
 
 interface Classroom {
     id: string;
@@ -37,29 +37,16 @@ interface Announcement {
     priority: 'normal' | 'important';
 }
 
-// Mock exams & quizzes for demonstration
-const MOCK_EXAMS: Exam[] = [
-    { id: '1', title: 'Mid-Semester Examination', date: '2026-03-15T10:00:00', duration: '2 hours', status: 'upcoming', type: 'exam', questionsCount: 40 },
-    { id: '2', title: 'Quiz 3 — Trees & Graphs', date: '2026-03-05T14:00:00', duration: '30 min', status: 'upcoming', type: 'quiz', questionsCount: 15 },
-    { id: '3', title: 'Quiz 2 — Sorting Algorithms', date: '2026-02-20T14:00:00', duration: '30 min', status: 'completed', type: 'quiz', questionsCount: 10 },
-    { id: '4', title: 'Unit Test 1', date: '2026-02-10T09:00:00', duration: '1 hour', status: 'completed', type: 'exam', questionsCount: 25 },
-];
-
-// Mock announcements
-const INITIAL_ANNOUNCEMENTS: Announcement[] = [
-    { id: '1', title: 'Mid-sem syllabus released', message: 'The mid-semester exam will cover Units 1–4. Please revise linked lists, stacks, queues, trees, and graphs.', date: '2026-02-22T09:00:00', priority: 'important' },
-    { id: '2', title: 'Lab session rescheduled', message: 'This week\'s lab session has been moved from Thursday to Friday 3:00 PM. Please plan accordingly.', date: '2026-02-20T11:30:00', priority: 'normal' },
-];
-
 export default function FacultyClassroomPage() {
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<Record<string, unknown> | null>(null);
     const router = useRouter();
     const params = useParams();
     const code = (params.code as string)?.toUpperCase();
 
     const [classroom, setClassroom] = useState<Classroom | null>(null);
     const [loading, setLoading] = useState(true);
-    const [announcements, setAnnouncements] = useState<Announcement[]>(INITIAL_ANNOUNCEMENTS);
+    const [exams, setExams] = useState<Exam[]>([]);
+    const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
     // Announcement modal state
     const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
@@ -68,60 +55,102 @@ export default function FacultyClassroomPage() {
     const [announcementPriority, setAnnouncementPriority] = useState<'normal' | 'important'>('normal');
 
     useEffect(() => {
-        const supabase = createClient();
+        
         const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const res = await fetch('/api/auth/me'); const data = await res.json(); const user = data.user;
             setUser(user);
         };
         getUser();
     }, []);
 
-    // Load classroom from localStorage
+    // Load classroom from API by code
     useEffect(() => {
-        const stored = localStorage.getItem('procto_classrooms');
-        if (stored) {
+        if (!code) return;
+        const fetchClassroom = async () => {
             try {
-                const classrooms: Classroom[] = JSON.parse(stored);
-                const found = classrooms.find((c) => c.code === code);
-                setClassroom(found || null);
+                // First get all courses to find by code
+                const res = await fetch('/api/courses');
+                if (res.ok) {
+                    const data = await res.json();
+                    const found = data.courses.find((c: Record<string, string>) => c.code === code);
+                    if (found) {
+                        setClassroom({
+                            id: found.id,
+                            code: found.code,
+                            name: found.name,
+                            courseCode: found.code,
+                            subject: found.name,
+                            description: found.description || undefined,
+                            createdAt: found.createdAt,
+                            students: found.students || 0,
+                        });
+
+                        // Fetch exams for this course
+                        const examsRes = await fetch(`/api/exams?courseId=${found.id}`);
+                        if (examsRes.ok) {
+                            const examsData = await examsRes.json();
+                            setExams(examsData.exams.map((e: Record<string, unknown>) => {
+                                const now = new Date();
+                                const startAt = new Date(e.startAt as string);
+                                const endAt = new Date(e.endAt as string);
+                                let status: 'upcoming' | 'live' | 'completed' = 'upcoming';
+                                if (now >= startAt && now <= endAt) status = 'live';
+                                else if (now > endAt) status = 'completed';
+                                return {
+                                    id: e.id as string,
+                                    title: e.title as string,
+                                    date: e.startAt as string,
+                                    duration: `${e.durationMinutes} min`,
+                                    status,
+                                    type: (e.durationMinutes as number) <= 30 ? 'quiz' : 'exam',
+                                    questionsCount: (e.questionsCount as number) || 0,
+                                };
+                            }));
+                        }
+
+                        // Fetch announcements for this course
+                        const annRes = await fetch(`/api/courses/${found.id}/announcements`);
+                        if (annRes.ok) {
+                            const annData = await annRes.json();
+                            setAnnouncements(annData.announcements.map((a: Record<string, unknown>) => ({
+                                id: a.id as string,
+                                title: a.title as string,
+                                message: a.body as string,
+                                date: a.createdAt as string,
+                                priority: (a.isPinned ? 'important' : 'normal') as 'normal' | 'important',
+                            })));
+                        }
+                    } else {
+                        setClassroom(null);
+                    }
+                }
             } catch {
                 setClassroom(null);
             }
-        }
-        setLoading(false);
-    }, [code]);
-
-    // Load saved announcements for this classroom
-    useEffect(() => {
-        if (!code) return;
-        const stored = localStorage.getItem(`procto_announcements_${code}`);
-        if (stored) {
-            try {
-                setAnnouncements(JSON.parse(stored));
-            } catch {
-                setAnnouncements(INITIAL_ANNOUNCEMENTS);
-            }
-        }
+            setLoading(false);
+        };
+        fetchClassroom();
     }, [code]);
 
     const handleLogout = async () => {
-        const supabase = createClient();
-        await supabase.auth.signOut();
+        
+        await fetch('/api/auth/logout', { method: 'POST' });
         router.push('/');
         router.refresh();
     };
 
     const getInitials = () => {
-        if (!user?.email) return 'FC';
-        const parts = user.email.split('@')[0].split('.');
-        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-        return user.email.substring(0, 2).toUpperCase();
+        const u = user as Record<string, string> | null;
+        if (u?.firstName && u?.lastName) return (u.firstName[0] + u.lastName[0]).toUpperCase();
+        if (!u?.email) return 'FC';
+        return u.email.substring(0, 2).toUpperCase();
     };
 
     const getDisplayName = () => {
-        if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
-        if (!user?.email) return 'Faculty';
-        return user.email.split('@')[0].replace('.', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+        const u = user as Record<string, string> | null;
+        if (u?.firstName) return `${u.firstName} ${u.lastName}`;
+        if (!u?.email) return 'Faculty';
+        return u.email.split('@')[0];
     };
 
     const formatDate = (dateStr: string) => {
@@ -134,20 +163,32 @@ export default function FacultyClassroomPage() {
         return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
     };
 
-    const handleAddAnnouncement = () => {
-        if (!announcementTitle.trim() || !announcementMessage.trim()) return;
+    const handleAddAnnouncement = async () => {
+        if (!announcementTitle.trim() || !announcementMessage.trim() || !classroom) return;
 
-        const newAnnouncement: Announcement = {
-            id: crypto.randomUUID(),
-            title: announcementTitle.trim(),
-            message: announcementMessage.trim(),
-            date: new Date().toISOString(),
-            priority: announcementPriority,
-        };
+        try {
+            const res = await fetch(`/api/courses/${classroom.id}/announcements`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: announcementTitle.trim(),
+                    body: announcementMessage.trim(),
+                    isPinned: announcementPriority === 'important',
+                }),
+            });
 
-        const updated = [newAnnouncement, ...announcements];
-        setAnnouncements(updated);
-        localStorage.setItem(`procto_announcements_${code}`, JSON.stringify(updated));
+            if (res.ok) {
+                const data = await res.json();
+                const newAnnouncement: Announcement = {
+                    id: data.announcement.id,
+                    title: data.announcement.title,
+                    message: data.announcement.body,
+                    date: data.announcement.createdAt,
+                    priority: data.announcement.isPinned ? 'important' : 'normal',
+                };
+                setAnnouncements((prev) => [newAnnouncement, ...prev]);
+            }
+        } catch { /* ignore */ }
 
         // Reset form
         setAnnouncementTitle('');
@@ -244,8 +285,8 @@ export default function FacultyClassroomPage() {
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                                     My Profile
                                 </a>
-                                {user?.email && (
-                                    <div className="px-3 py-2 text-xs text-slate-500 truncate border-t border-slate-700/60 mt-1 pt-2">{user.email}</div>
+                                {!!user?.email && (
+                                    <div className="px-3 py-2 text-xs text-slate-500 truncate border-t border-slate-700/60 mt-1 pt-2">{String(user.email)}</div>
                                 )}
                                 <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 rounded-lg hover:bg-red-500/10 transition-colors">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
@@ -339,7 +380,7 @@ export default function FacultyClassroomPage() {
                             </div>
                         </div>
 
-                        {MOCK_EXAMS.map((exam) => (
+                        {exams.map((exam) => (
                             <div
                                 key={exam.id}
                                 className={`relative rounded-2xl border bg-slate-900/60 p-5 backdrop-blur-sm transition-all duration-300 hover:shadow-lg ${exam.status === 'upcoming'

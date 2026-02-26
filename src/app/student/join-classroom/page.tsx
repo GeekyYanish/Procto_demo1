@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
+
+
 
 export default function JoinClassroomPage() {
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<Record<string, unknown> | null>(null);
     const [classCode, setClassCode] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -15,17 +15,17 @@ export default function JoinClassroomPage() {
     const router = useRouter();
 
     useEffect(() => {
-        const supabase = createClient();
+        
         const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const res = await fetch('/api/auth/me'); const data = await res.json(); const user = data.user;
             setUser(user);
         };
         getUser();
     }, []);
 
     const handleLogout = async () => {
-        const supabase = createClient();
-        await supabase.auth.signOut();
+        
+        await fetch('/api/auth/logout', { method: 'POST' });
         router.push('/');
         router.refresh();
     };
@@ -42,37 +42,46 @@ export default function JoinClassroomPage() {
 
         setLoading(true);
 
-        // Valid demo codes
-        const validCodes = ['PROCTO-1234'];
         const code = classCode.trim().toUpperCase();
 
-        // Simulate a network request
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        try {
+            const res = await fetch('/api/enrollments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ courseCode: code }),
+            });
 
-        if (validCodes.includes(code)) {
-            // Redirect to the classroom page
-            router.push(`/student/classroom/${code}`);
-        } else {
-            setError('Invalid class code. Please check with your faculty and try again.');
+            const data = await res.json();
+
+            if (res.ok) {
+                setSuccess(`Successfully enrolled in ${data.enrollment.course.name}!`);
+                setTimeout(() => {
+                    router.push(`/student/classroom/${code}`);
+                }, 1000);
+            } else {
+                setError(data.error || 'Invalid class code. Please check with your faculty and try again.');
+                setLoading(false);
+            }
+        } catch {
+            setError('Network error. Please try again.');
             setLoading(false);
         }
     };
 
     // Get user initials for avatar
     const getInitials = () => {
-        if (!user?.email) return 'ST';
-        const parts = user.email.split('@')[0].split('.');
-        if (parts.length >= 2) {
-            return (parts[0][0] + parts[1][0]).toUpperCase();
-        }
-        return user.email.substring(0, 2).toUpperCase();
+        const u = user as Record<string, string> | null;
+        if (u?.firstName && u?.lastName) return (u.firstName[0] + u.lastName[0]).toUpperCase();
+        if (!u?.email) return 'ST';
+        return u.email.substring(0, 2).toUpperCase();
     };
 
     // Get display name
     const getDisplayName = () => {
-        if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
-        if (!user?.email) return 'Student';
-        return user.email.split('@')[0].replace('.', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+        const u = user as Record<string, string> | null;
+        if (u?.firstName) return `${u.firstName} ${u.lastName}`;
+        if (!u?.email) return 'Student';
+        return u.email.split('@')[0];
     };
 
     return (
@@ -158,9 +167,9 @@ export default function JoinClassroomPage() {
                                     </svg>
                                     Settings
                                 </a>
-                                {user?.email && (
+                                {!!user?.email && (
                                     <div className="px-3 py-2 text-xs text-neutral-500 truncate border-t border-neutral-700/60 mt-1 pt-2">
-                                        {user.email}
+                                        {String(user.email)}
                                     </div>
                                 )}
                                 <button

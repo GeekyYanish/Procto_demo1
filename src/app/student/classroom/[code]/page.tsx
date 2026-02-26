@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
+
+
 
 // Mock classroom data
 const MOCK_CLASSROOMS: Record<string, {
@@ -38,7 +38,7 @@ const MOCK_CLASSROOMS: Record<string, {
 };
 
 export default function ClassroomPage() {
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<Record<string, unknown> | null>(null);
     const router = useRouter();
     const params = useParams();
     const code = (params.code as string)?.toUpperCase();
@@ -46,32 +46,33 @@ export default function ClassroomPage() {
     const classroom = MOCK_CLASSROOMS[code];
 
     useEffect(() => {
-        const supabase = createClient();
+        
         const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const res = await fetch('/api/auth/me'); const data = await res.json(); const user = data.user;
             setUser(user);
         };
         getUser();
     }, []);
 
     const handleLogout = async () => {
-        const supabase = createClient();
-        await supabase.auth.signOut();
+        
+        await fetch('/api/auth/logout', { method: 'POST' });
         router.push('/');
         router.refresh();
     };
 
     const getInitials = () => {
-        if (!user?.email) return 'ST';
-        const parts = user.email.split('@')[0].split('.');
-        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-        return user.email.substring(0, 2).toUpperCase();
+        const u = user as Record<string, string> | null;
+        if (u?.firstName && u?.lastName) return (u.firstName[0] + u.lastName[0]).toUpperCase();
+        if (!u?.email) return 'ST';
+        return u.email.substring(0, 2).toUpperCase();
     };
 
     const getDisplayName = () => {
-        if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
-        if (!user?.email) return 'Student';
-        return user.email.split('@')[0].replace('.', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+        const u = user as Record<string, string> | null;
+        if (u?.firstName) return `${u.firstName} ${u.lastName}`;
+        if (!u?.email) return 'Student';
+        return u.email.split('@')[0];
     };
 
     const formatDate = (dateStr: string) => {
@@ -157,8 +158,8 @@ export default function ClassroomPage() {
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                                     My Profile
                                 </a>
-                                {user?.email && (
-                                    <div className="px-3 py-2 text-xs text-neutral-500 truncate border-t border-neutral-700/60 mt-1 pt-2">{user.email}</div>
+                                {!!user?.email && (
+                                    <div className="px-3 py-2 text-xs text-neutral-500 truncate border-t border-neutral-700/60 mt-1 pt-2">{String(user.email)}</div>
                                 )}
                                 <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 rounded-lg hover:bg-red-500/10 transition-colors">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>

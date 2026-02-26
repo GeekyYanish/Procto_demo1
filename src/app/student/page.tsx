@@ -4,44 +4,53 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
+
+interface AppUser {
+    id: string;
+    email: string;
+    username?: string | null;
+    firstName: string;
+    lastName: string;
+    role: string;
+}
 
 export default function StudentPage() {
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<AppUser | null>(null);
     const router = useRouter();
 
     useEffect(() => {
-        const supabase = createClient();
         const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
+            try {
+                const res = await fetch('/api/auth/me');
+                if (res.ok) {
+                    const data = await res.json();
+                    setUser(data.user);
+                }
+            } catch { /* ignore */ }
         };
         getUser();
     }, []);
 
     const handleLogout = async () => {
-        const supabase = createClient();
-        await supabase.auth.signOut();
+        await fetch('/api/auth/logout', { method: 'POST' });
         router.push('/');
         router.refresh();
     };
 
     // Get user initials for avatar
     const getInitials = () => {
-        if (!user?.email) return 'ST';
-        const parts = user.email.split('@')[0].split('.');
-        if (parts.length >= 2) {
-            return (parts[0][0] + parts[1][0]).toUpperCase();
+        if (user?.firstName && user?.lastName) {
+            return (user.firstName[0] + user.lastName[0]).toUpperCase();
         }
+        if (!user?.email) return 'ST';
         return user.email.substring(0, 2).toUpperCase();
     };
 
     // Get display name
     const getDisplayName = () => {
-        if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
+        if (user?.firstName) return `${user.firstName} ${user.lastName}`;
         if (!user?.email) return 'Student';
-        return user.email.split('@')[0].replace('.', ' ').replace(/\b\w/g, c => c.toUpperCase());
+        return user.email.split('@')[0];
     };
 
     return (
@@ -165,11 +174,20 @@ export default function StudentPage() {
                                     </svg>
                                     Settings
                                 </a>
-                                {user?.email && (
+                                {!!user?.email && (
                                     <div className="px-3 py-2 text-xs text-neutral-500 truncate border-t border-neutral-700/60 mt-1 pt-2">
-                                        {user.email}
+                                        {String(user.email)}
                                     </div>
                                 )}
+                                <Link
+                                    href="/student/my-results"
+                                    className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-300 rounded-lg hover:bg-neutral-800/60 hover:text-emerald-400 transition-colors"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                    </svg>
+                                    My Results
+                                </Link>
                                 <button
                                     onClick={handleLogout}
                                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 rounded-lg hover:bg-red-500/10 transition-colors"
@@ -388,6 +406,22 @@ export default function StudentPage() {
                                             </svg>
                                         </Link>
                                     </div>
+
+                                    {/* My Results */}
+                                    <Link href="/student/my-results" className="w-full flex items-center gap-4 rounded-xl border border-neutral-800 bg-neutral-950/60 p-4 hover:border-emerald-500/50 hover:bg-neutral-900/80 transition-all group">
+                                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+                                            <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                            </svg>
+                                        </div>
+                                        <div className="flex-1 text-left">
+                                            <p className="text-sm font-semibold text-white group-hover:text-emerald-400 transition-colors">My Results</p>
+                                            <p className="text-xs text-neutral-500">View exam scores & analytics</p>
+                                        </div>
+                                        <svg className="w-5 h-5 text-neutral-600 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </Link>
                                 </div>
                             </div>
                         </div>

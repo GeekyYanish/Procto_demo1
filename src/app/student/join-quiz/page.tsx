@@ -4,8 +4,8 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
+
+
 
 // ── Types (mirrored from create-quiz) ──
 interface MCQQuestion {
@@ -37,7 +37,7 @@ interface Quiz {
 }
 
 export default function JoinQuizPage() {
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<Record<string, unknown> | null>(null);
     const [quizCode, setQuizCode] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -45,33 +45,34 @@ export default function JoinQuizPage() {
     const router = useRouter();
 
     useEffect(() => {
-        const supabase = createClient();
+        
         const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const res = await fetch('/api/auth/me'); const data = await res.json(); const user = data.user;
             setUser(user);
         };
         getUser();
     }, []);
 
     const handleLogout = async () => {
-        const supabase = createClient();
-        await supabase.auth.signOut();
+        
+        await fetch('/api/auth/logout', { method: 'POST' });
         router.push('/');
         router.refresh();
     };
 
     // ── Helpers ──
     const getInitials = () => {
-        if (!user?.email) return 'ST';
-        const parts = user.email.split('@')[0].split('.');
-        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-        return user.email.substring(0, 2).toUpperCase();
+        const u = user as Record<string, string> | null;
+        if (u?.firstName && u?.lastName) return (u.firstName[0] + u.lastName[0]).toUpperCase();
+        if (!u?.email) return 'ST';
+        return u.email.substring(0, 2).toUpperCase();
     };
 
     const getDisplayName = () => {
-        if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
-        if (!user?.email) return 'Student';
-        return user.email.split('@')[0].replace('.', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+        const u = user as Record<string, string> | null;
+        if (u?.firstName) return `${u.firstName} ${u.lastName}`;
+        if (!u?.email) return 'Student';
+        return u.email.split('@')[0];
     };
 
     // ── Join handler ──
@@ -88,17 +89,36 @@ export default function JoinQuizPage() {
 
         setLoading(true);
 
-        // Simulate brief network delay
-        await new Promise((r) => setTimeout(r, 600));
+        try {
+            // Search exams the student can access
+            const res = await fetch('/api/exams');
+            if (res.ok) {
+                const data = await res.json();
+                // Match by exam ID prefix (code) or exam title
+                const match = data.exams.find((e: Record<string, unknown>) => {
+                    const examCode = (e.id as string).slice(0, 8).toUpperCase();
+                    return examCode === code || (e.title as string).toUpperCase().includes(code);
+                });
 
-        // Look up quiz in localStorage
-        const quizzes: Quiz[] = JSON.parse(localStorage.getItem('procto_quizzes') || '[]');
-        const match = quizzes.find((q) => q.code.toUpperCase() === code);
-
-        if (match) {
-            setFoundQuiz(match);
-        } else {
-            setError('Invalid quiz code. Please check with your faculty and try again.');
+                if (match) {
+                    setFoundQuiz({
+                        id: match.id,
+                        code: match.id.slice(0, 8).toUpperCase(),
+                        title: match.title,
+                        description: match.instructions || undefined,
+                        timeLimit: match.durationMinutes,
+                        questions: [],
+                        createdAt: match.startAt,
+                        createdBy: match.course?.name,
+                    });
+                } else {
+                    setError('Invalid quiz code. Please check with your faculty and try again.');
+                }
+            } else {
+                setError('Failed to search exams. Please try again.');
+            }
+        } catch {
+            setError('Network error. Please try again.');
         }
 
         setLoading(false);
@@ -197,9 +217,9 @@ export default function JoinQuizPage() {
                                     </svg>
                                     Settings
                                 </a>
-                                {user?.email && (
+                                {!!user?.email && (
                                     <div className="px-3 py-2 text-xs text-neutral-500 truncate border-t border-neutral-700/60 mt-1 pt-2">
-                                        {user.email}
+                                        {String(user.email)}
                                     </div>
                                 )}
                                 <button

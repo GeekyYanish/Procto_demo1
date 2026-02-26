@@ -3,42 +3,16 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
 
-// Mock enrolled classrooms data
-const INITIAL_CLASSROOMS = [
-    {
-        code: 'PROCTO-1234',
-        name: 'Data Structures & Algorithms',
-        subject: 'CS201',
-        faculty: 'Dr. Sharma',
-        semester: 'Spring 2026',
-        studentsEnrolled: 48,
-        upcomingExams: 2,
-        color: 'emerald' as const,
-    },
-    {
-        code: 'PROCTO-5678',
-        name: 'Database Management Systems',
-        subject: 'CS301',
-        faculty: 'Prof. Mehta',
-        semester: 'Spring 2026',
-        studentsEnrolled: 35,
-        upcomingExams: 1,
-        color: 'cyan' as const,
-    },
-    {
-        code: 'PROCTO-9012',
-        name: 'Operating Systems',
-        subject: 'CS202',
-        faculty: 'Dr. Patel',
-        semester: 'Spring 2026',
-        studentsEnrolled: 52,
-        upcomingExams: 0,
-        color: 'violet' as const,
-    },
-];
+interface ClassroomData {
+    code: string;
+    name: string;
+    faculty: string;
+    students: number;
+    upcomingExams: number;
+    color: 'emerald' | 'cyan' | 'violet';
+    enrollmentId: string;
+}
 
 const colorMap = {
     emerald: {
@@ -71,43 +45,73 @@ const colorMap = {
 };
 
 export default function ManageClassroomsPage() {
-    const [user, setUser] = useState<User | null>(null);
-    const [classrooms, setClassrooms] = useState(INITIAL_CLASSROOMS);
+    const [user, setUser] = useState<Record<string, unknown> | null>(null);
+    const [classrooms, setClassrooms] = useState<ClassroomData[]>([]);
     const [confirmLeave, setConfirmLeave] = useState<string | null>(null);
     const router = useRouter();
 
     useEffect(() => {
-        const supabase = createClient();
+        
         const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const res = await fetch('/api/auth/me'); const data = await res.json(); const user = data.user;
             setUser(user);
         };
         getUser();
     }, []);
 
+    // Load enrolled classrooms from API
+    useEffect(() => {
+        const fetchClassrooms = async () => {
+            try {
+                const res = await fetch('/api/courses');
+                if (res.ok) {
+                    const data = await res.json();
+                    const colors: ('emerald' | 'cyan' | 'violet')[] = ['emerald', 'cyan', 'violet'];
+                    setClassrooms(data.courses.map((c: Record<string, unknown>, i: number) => ({
+                        code: c.code as string,
+                        name: c.name as string,
+                        faculty: (c.faculty as string) || 'Faculty',
+                        students: (c.students as number) || 0,
+                        upcomingExams: (c.upcomingExams as number) || 0,
+                        color: colors[i % colors.length],
+                        enrollmentId: (c.enrollmentId as string) || '',
+                    })));
+                }
+            } catch { /* ignore */ }
+        };
+        fetchClassrooms();
+    }, []);
+
     const handleLogout = async () => {
-        const supabase = createClient();
-        await supabase.auth.signOut();
+        
+        await fetch('/api/auth/logout', { method: 'POST' });
         router.push('/');
         router.refresh();
     };
 
-    const handleLeave = (code: string) => {
+    const handleLeave = async (code: string) => {
+        const cls = classrooms.find((c) => c.code === code);
+        if (cls?.enrollmentId) {
+            try {
+                await fetch(`/api/enrollments?enrollmentId=${cls.enrollmentId}`, { method: 'DELETE' });
+            } catch { /* ignore */ }
+        }
         setClassrooms((prev) => prev.filter((c) => c.code !== code));
         setConfirmLeave(null);
     };
 
     const getInitials = () => {
-        if (!user?.email) return 'ST';
-        const parts = user.email.split('@')[0].split('.');
-        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-        return user.email.substring(0, 2).toUpperCase();
+        const u = user as Record<string, string> | null;
+        if (u?.firstName && u?.lastName) return (u.firstName[0] + u.lastName[0]).toUpperCase();
+        if (!u?.email) return 'ST';
+        return u.email.substring(0, 2).toUpperCase();
     };
 
     const getDisplayName = () => {
-        if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
-        if (!user?.email) return 'Student';
-        return user.email.split('@')[0].replace('.', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+        const u = user as Record<string, string> | null;
+        if (u?.firstName) return `${u.firstName} ${u.lastName}`;
+        if (!u?.email) return 'Student';
+        return u.email.split('@')[0];
     };
 
     return (
@@ -157,8 +161,8 @@ export default function ManageClassroomsPage() {
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                                     My Profile
                                 </a>
-                                {user?.email && (
-                                    <div className="px-3 py-2 text-xs text-neutral-500 truncate border-t border-neutral-700/60 mt-1 pt-2">{user.email}</div>
+                                {!!user?.email && (
+                                    <div className="px-3 py-2 text-xs text-neutral-500 truncate border-t border-neutral-700/60 mt-1 pt-2">{String(user.email)}</div>
                                 )}
                                 <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 rounded-lg hover:bg-red-500/10 transition-colors">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
@@ -236,7 +240,7 @@ export default function ManageClassroomsPage() {
                                             <div className="flex items-center gap-2">
                                                 <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${c.badge}`}>
                                                     <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
-                                                    {cls.subject}
+                                                    {cls.name}
                                                 </span>
                                                 <span className="inline-flex items-center rounded-full border border-neutral-700/60 bg-neutral-800/60 px-2.5 py-0.5 text-[0.65rem] font-mono text-neutral-500">
                                                     {cls.code}
@@ -265,7 +269,7 @@ export default function ManageClassroomsPage() {
                                             <svg className={`w-3.5 h-3.5 ${c.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                             </svg>
-                                            {cls.faculty} · {cls.semester}
+                                            {cls.faculty}
                                         </p>
 
                                         {/* Stats row */}
@@ -274,7 +278,7 @@ export default function ManageClassroomsPage() {
                                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 </svg>
-                                                {cls.studentsEnrolled} students
+                                                {cls.students} students
                                             </span>
                                             <span className="flex items-center gap-1.5">
                                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

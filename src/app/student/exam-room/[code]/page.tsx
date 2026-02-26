@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
+
+
 
 // Demo exam data
 const DEMO_EXAMS: Record<string, {
@@ -62,7 +62,7 @@ const DEMO_EXAMS: Record<string, {
 };
 
 export default function ExamRoomPage() {
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<Record<string, unknown> | null>(null);
     const router = useRouter();
     const params = useParams();
     const code = (params.code as string)?.toUpperCase();
@@ -75,11 +75,91 @@ export default function ExamRoomPage() {
     const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
     const [score, setScore] = useState(0);
 
+    // ── Proctoring state ──────────────────────────────────────
+    const [violations, setViolations] = useState(0);
+    const [violationBanner, setViolationBanner] = useState('');
+
+    const logViolation = useCallback(async (type: string, severity: string) => {
+        setViolations(prev => prev + 1);
+        setViolationBanner(`⚠ ${type.replace(/_/g, ' ')} detected`);
+        setTimeout(() => setViolationBanner(''), 4000);
+        // Log to server (best-effort, no session ID in demo mode)
+        try {
+            await fetch('/api/proctor/events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId: `demo-${code}`, type, severity }),
+            });
+        } catch { /* ignore in demo */ }
+    }, [code]);
+
+    // ── Fullscreen enforcement ────────────────────────────────
     useEffect(() => {
-        const supabase = createClient();
+        if (!exam || submitted) return;
+        const handleFullscreenChange = () => {
+            if (!document.fullscreenElement) {
+                logViolation('SCREEN_EXIT', 'HIGH');
+            }
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, [exam, submitted, logViolation]);
+
+    // ── Tab switching / window blur detection ─────────────────
+    useEffect(() => {
+        if (!exam || submitted) return;
+        const handleVisibility = () => {
+            if (document.hidden) logViolation('TAB_SWITCH', 'HIGH');
+        };
+        const handleBlur = () => logViolation('WINDOW_BLUR', 'MEDIUM');
+        document.addEventListener('visibilitychange', handleVisibility);
+        window.addEventListener('blur', handleBlur);
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibility);
+            window.removeEventListener('blur', handleBlur);
+        };
+    }, [exam, submitted, logViolation]);
+
+    // ── Copy/paste/right-click prevention ─────────────────────
+    useEffect(() => {
+        if (!exam || submitted) return;
+        const blockCopy = (e: ClipboardEvent) => { e.preventDefault(); logViolation('COPY_PASTE', 'MEDIUM'); };
+        const blockPaste = (e: ClipboardEvent) => { e.preventDefault(); logViolation('COPY_PASTE', 'MEDIUM'); };
+        const blockContextMenu = (e: MouseEvent) => { e.preventDefault(); logViolation('RIGHT_CLICK', 'LOW'); };
+        const blockKeys = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'a', 'x', 'u'].includes(e.key.toLowerCase())) {
+                e.preventDefault();
+                logViolation('COPY_PASTE', 'MEDIUM');
+            }
+        };
+        document.addEventListener('copy', blockCopy);
+        document.addEventListener('paste', blockPaste);
+        document.addEventListener('contextmenu', blockContextMenu);
+        document.addEventListener('keydown', blockKeys);
+        return () => {
+            document.removeEventListener('copy', blockCopy);
+            document.removeEventListener('paste', blockPaste);
+            document.removeEventListener('contextmenu', blockContextMenu);
+            document.removeEventListener('keydown', blockKeys);
+        };
+    }, [exam, submitted, logViolation]);
+
+    // ── Beforeunload warning ──────────────────────────────────
+    useEffect(() => {
+        if (!exam || submitted) return;
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            e.preventDefault();
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [exam, submitted]);
+
+    useEffect(() => {
         const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
+            try {
+                const res = await fetch('/api/auth/me');
+                if (res.ok) { const data = await res.json(); setUser(data.user); }
+            } catch { /* ignore */ }
         };
         getUser();
     }, []);
@@ -109,6 +189,10 @@ export default function ExamRoomPage() {
         setScore(calculatedScore);
         setSubmitted(true);
         setShowConfirmSubmit(false);
+        // Exit fullscreen on submit
+        if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => { });
+        }
     }, [exam, answers]);
 
     const handleSelectAnswer = (questionId: number, optionIndex: number) => {
@@ -123,16 +207,19 @@ export default function ExamRoomPage() {
     };
 
     const getInitials = () => {
-        if (!user?.email) return 'ST';
-        const parts = user.email.split('@')[0].split('.');
-        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-        return user.email.substring(0, 2).toUpperCase();
+        const u = user as Record<string, string> | null;
+        if (u?.firstName && u?.lastName) {
+            return (u.firstName[0] + u.lastName[0]).toUpperCase();
+        }
+        if (!u?.email) return 'ST';
+        return u.email.substring(0, 2).toUpperCase();
     };
 
     const getDisplayName = () => {
-        if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
-        if (!user?.email) return 'Student';
-        return user.email.split('@')[0].replace('.', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+        const u = user as Record<string, string> | null;
+        if (u?.firstName) return `${u.firstName} ${u.lastName}`;
+        if (!u?.email) return 'Student';
+        return u.email.split('@')[0];
     };
 
     const answeredCount = Object.keys(answers).length;
@@ -279,8 +366,8 @@ export default function ExamRoomPage() {
 
                     {/* Center — Timer */}
                     <div className={`flex items-center gap-2 rounded-full border px-4 py-2 font-mono text-lg ${timeLeft <= 300
-                            ? 'border-red-500/50 bg-red-500/10 text-red-400 shadow-lg shadow-red-500/20'
-                            : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                        ? 'border-red-500/50 bg-red-500/10 text-red-400 shadow-lg shadow-red-500/20'
+                        : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
                         }`}>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -301,6 +388,24 @@ export default function ExamRoomPage() {
                 </div>
             </div>
 
+            {/* Violation Banner */}
+            {violationBanner && (
+                <div className="relative border-b border-red-500/30 bg-red-500/10 backdrop-blur-xl">
+                    <div className="mx-auto flex items-center justify-center gap-2 px-4 py-2 text-sm text-red-400 font-medium">
+                        {violationBanner}
+                    </div>
+                </div>
+            )}
+
+            {/* Violation Counter */}
+            {violations > 0 && !submitted && (
+                <div className="fixed top-16 right-4 z-40">
+                    <div className="rounded-xl border border-red-500/30 bg-red-500/10 backdrop-blur-sm px-3 py-2 text-xs text-red-400">
+                        <span className="font-bold">{violations}</span> violation{violations !== 1 ? 's' : ''}
+                    </div>
+                </div>
+            )}
+
             <div className="relative mx-auto flex w-full max-w-7xl flex-1 gap-6 px-4 py-6 sm:px-6 lg:px-8">
                 {/* Sidebar — Question Navigation */}
                 <aside className="hidden lg:flex w-64 flex-col gap-4">
@@ -312,10 +417,10 @@ export default function ExamRoomPage() {
                                     key={q.id}
                                     onClick={() => setCurrentQuestion(index)}
                                     className={`w-full aspect-square rounded-lg text-sm font-semibold transition-all duration-200 ${currentQuestion === index
-                                            ? 'bg-emerald-500 text-black scale-110 shadow-lg shadow-emerald-500/30'
-                                            : answers[q.id] !== undefined
-                                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30'
-                                                : 'bg-neutral-800/60 text-neutral-400 border border-neutral-700/50 hover:border-neutral-600'
+                                        ? 'bg-emerald-500 text-black scale-110 shadow-lg shadow-emerald-500/30'
+                                        : answers[q.id] !== undefined
+                                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30'
+                                            : 'bg-neutral-800/60 text-neutral-400 border border-neutral-700/50 hover:border-neutral-600'
                                         }`}
                                 >
                                     {index + 1}
@@ -390,14 +495,14 @@ export default function ExamRoomPage() {
                                         key={index}
                                         onClick={() => handleSelectAnswer(question.id, index)}
                                         className={`w-full text-left rounded-xl border p-4 transition-all duration-200 group ${answers[question.id] === index
-                                                ? 'border-emerald-500/60 bg-emerald-500/10 ring-2 ring-emerald-500/20'
-                                                : 'border-neutral-800 bg-neutral-950/40 hover:border-neutral-600 hover:bg-neutral-900/60'
+                                            ? 'border-emerald-500/60 bg-emerald-500/10 ring-2 ring-emerald-500/20'
+                                            : 'border-neutral-800 bg-neutral-950/40 hover:border-neutral-600 hover:bg-neutral-900/60'
                                             }`}
                                     >
                                         <div className="flex items-center gap-4">
                                             <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-all ${answers[question.id] === index
-                                                    ? 'bg-emerald-500 text-black'
-                                                    : 'bg-neutral-800/80 text-neutral-400 group-hover:bg-neutral-700/80'
+                                                ? 'bg-emerald-500 text-black'
+                                                : 'bg-neutral-800/80 text-neutral-400 group-hover:bg-neutral-700/80'
                                                 }`}>
                                                 {String.fromCharCode(65 + index)}
                                             </div>
@@ -430,10 +535,10 @@ export default function ExamRoomPage() {
                                             key={q.id}
                                             onClick={() => setCurrentQuestion(index)}
                                             className={`w-2.5 h-2.5 rounded-full transition-all ${currentQuestion === index
-                                                    ? 'bg-emerald-400 scale-125'
-                                                    : answers[q.id] !== undefined
-                                                        ? 'bg-emerald-500/40'
-                                                        : 'bg-neutral-700'
+                                                ? 'bg-emerald-400 scale-125'
+                                                : answers[q.id] !== undefined
+                                                    ? 'bg-emerald-500/40'
+                                                    : 'bg-neutral-700'
                                                 }`}
                                         />
                                     ))}
