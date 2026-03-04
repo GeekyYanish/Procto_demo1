@@ -449,7 +449,7 @@ export default function HomePage() {
                             <div className="glass-card rounded-2xl p-8 relative overflow-hidden glow-pulse">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-[60px]" />
                                 <div className="relative z-10">
-                                    <div className="mono text-[10px] text-cyan-400 font-bold mb-4 animate-flicker">// SYSTEM STATUS</div>
+                                    <div className="mono text-[10px] text-cyan-400 font-bold mb-4 animate-flicker">{"// SYSTEM STATUS"}</div>
                                     <div className="space-y-3 font-mono text-sm">
                                         {[
                                             { name: 'neural_sync', status: 'ACTIVE', color: 'text-emerald-400' },

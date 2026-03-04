@@ -83,6 +83,7 @@ export default function FacultyClassroomPage() {
             try {
                 const classrooms: Classroom[] = JSON.parse(stored);
                 const found = classrooms.find((c) => c.code === code);
+                // eslint-disable-next-line react-hooks/set-state-in-effect
                 setClassroom(found || null);
             } catch {
                 setClassroom(null);
@@ -97,6 +98,7 @@ export default function FacultyClassroomPage() {
         const stored = localStorage.getItem(`procto_announcements_${code}`);
         if (stored) {
             try {
+                // eslint-disable-next-line react-hooks/set-state-in-effect
                 setAnnouncements(JSON.parse(stored));
             } catch {
                 setAnnouncements(INITIAL_ANNOUNCEMENTS);

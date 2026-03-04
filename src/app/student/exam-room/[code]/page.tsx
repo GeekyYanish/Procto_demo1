@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 
@@ -63,7 +63,6 @@ const DEMO_EXAMS: Record<string, {
 
 export default function ExamRoomPage() {
     const [user, setUser] = useState<User | null>(null);
-    const router = useRouter();
     const params = useParams();
     const code = (params.code as string)?.toUpperCase();
     const exam = DEMO_EXAMS[code];
@@ -279,8 +278,8 @@ export default function ExamRoomPage() {
 
                     {/* Center — Timer */}
                     <div className={`flex items-center gap-2 rounded-full border px-4 py-2 font-mono text-lg ${timeLeft <= 300
-                            ? 'border-red-500/50 bg-red-500/10 text-red-400 shadow-lg shadow-red-500/20'
-                            : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                        ? 'border-red-500/50 bg-red-500/10 text-red-400 shadow-lg shadow-red-500/20'
+                        : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
                         }`}>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -312,10 +311,10 @@ export default function ExamRoomPage() {
                                     key={q.id}
                                     onClick={() => setCurrentQuestion(index)}
                                     className={`w-full aspect-square rounded-lg text-sm font-semibold transition-all duration-200 ${currentQuestion === index
-                                            ? 'bg-emerald-500 text-black scale-110 shadow-lg shadow-emerald-500/30'
-                                            : answers[q.id] !== undefined
-                                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30'
-                                                : 'bg-neutral-800/60 text-neutral-400 border border-neutral-700/50 hover:border-neutral-600'
+                                        ? 'bg-emerald-500 text-black scale-110 shadow-lg shadow-emerald-500/30'
+                                        : answers[q.id] !== undefined
+                                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30'
+                                            : 'bg-neutral-800/60 text-neutral-400 border border-neutral-700/50 hover:border-neutral-600'
                                         }`}
                                 >
                                     {index + 1}
@@ -390,14 +389,14 @@ export default function ExamRoomPage() {
                                         key={index}
                                         onClick={() => handleSelectAnswer(question.id, index)}
                                         className={`w-full text-left rounded-xl border p-4 transition-all duration-200 group ${answers[question.id] === index
-                                                ? 'border-emerald-500/60 bg-emerald-500/10 ring-2 ring-emerald-500/20'
-                                                : 'border-neutral-800 bg-neutral-950/40 hover:border-neutral-600 hover:bg-neutral-900/60'
+                                            ? 'border-emerald-500/60 bg-emerald-500/10 ring-2 ring-emerald-500/20'
+                                            : 'border-neutral-800 bg-neutral-950/40 hover:border-neutral-600 hover:bg-neutral-900/60'
                                             }`}
                                     >
                                         <div className="flex items-center gap-4">
                                             <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-all ${answers[question.id] === index
-                                                    ? 'bg-emerald-500 text-black'
-                                                    : 'bg-neutral-800/80 text-neutral-400 group-hover:bg-neutral-700/80'
+                                                ? 'bg-emerald-500 text-black'
+                                                : 'bg-neutral-800/80 text-neutral-400 group-hover:bg-neutral-700/80'
                                                 }`}>
                                                 {String.fromCharCode(65 + index)}
                                             </div>
@@ -430,10 +429,10 @@ export default function ExamRoomPage() {
                                             key={q.id}
                                             onClick={() => setCurrentQuestion(index)}
                                             className={`w-2.5 h-2.5 rounded-full transition-all ${currentQuestion === index
-                                                    ? 'bg-emerald-400 scale-125'
-                                                    : answers[q.id] !== undefined
-                                                        ? 'bg-emerald-500/40'
-                                                        : 'bg-neutral-700'
+                                                ? 'bg-emerald-400 scale-125'
+                                                : answers[q.id] !== undefined
+                                                    ? 'bg-emerald-500/40'
+                                                    : 'bg-neutral-700'
                                                 }`}
                                         />
                                     ))}

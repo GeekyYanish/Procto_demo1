@@ -118,6 +118,7 @@ export default function ManageQuizPage() {
         const stored = localStorage.getItem('procto_quizzes');
         if (stored) {
             try {
+                // eslint-disable-next-line react-hooks/set-state-in-effect
                 setQuizzes(JSON.parse(stored));
             } catch {
                 setQuizzes([]);

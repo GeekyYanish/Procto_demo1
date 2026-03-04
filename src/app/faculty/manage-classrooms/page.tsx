@@ -95,6 +95,7 @@ export default function ManageClassroomsPage() {
         const stored = localStorage.getItem('procto_classrooms');
         if (stored) {
             try {
+                // eslint-disable-next-line react-hooks/set-state-in-effect
                 setClassrooms(JSON.parse(stored));
             } catch {
                 setClassrooms([]);
